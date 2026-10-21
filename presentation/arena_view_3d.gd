@@ -58,7 +58,6 @@ var _time := 0.0
 var _wall_mesh := BoxMesh.new()
 var _box_mesh := BoxMesh.new()
 var _bomb_mesh := SphereMesh.new()
-var _flame_mesh := BoxMesh.new()
 var _materials: Dictionary = {}
 var _effects := Effects3D.new()
 
@@ -68,7 +67,6 @@ func _ready() -> void:
 	_box_mesh.size = Vector3(0.88, 0.88, 0.88)
 	_bomb_mesh.radius = 0.36
 	_bomb_mesh.height = 0.72
-	_flame_mesh.size = Vector3(0.9, 0.5, 0.9)
 	_setup_environment()
 
 
@@ -402,11 +400,43 @@ func _sync_flames() -> void:
 			_flames.erase(cell)
 	for cell: Vector2i in cells:
 		if not _flames.has(cell):
-			var flame := _add_mesh(self, _flame_mesh, _flame_material(), Vector3(cell.x + 0.5, 0.3, cell.y + 0.5))
+			var flame := _make_flame(Vector3(cell.x + 0.5, 0.0, cell.y + 0.5))
 			flame.set_meta("born", _time)
 			_flames[cell] = flame
 		var grow := minf((_time - _flames[cell].get_meta("born")) * 12.0, 1.0)
-		_flames[cell].scale = Vector3(grow, grow * (1.0 + 0.3 * sin(_time * 30.0 + cell.x * 2.0)), grow)
+		var flicker := 1.0 + 0.25 * sin(_time * 25.0 + cell.x * 2.0 + cell.y * 3.0)
+		_flames[cell].scale = Vector3(grow, grow * flicker, grow)
+		_flames[cell].rotation.y = _time * 3.0 + cell.x
+
+
+# Flamme: großer orangeroter Kegel, darin gelber und weißer Kern, dazu aufsteigende Funken.
+func _make_flame(pos: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.position = pos
+	var layers := [[0.42, 0.95, Color("ff4d00")], [0.3, 0.75, Color("ffa500")], [0.16, 0.5, Color("fff2a8")]]
+	for layer in layers:
+		var cone := CylinderMesh.new()
+		cone.bottom_radius = layer[0]
+		cone.top_radius = 0.02
+		cone.height = layer[1]
+		cone.radial_segments = 8
+		_add_mesh(root, cone, _glow_material(layer[2]), Vector3(0, layer[1] / 2.0, 0))
+	var sparks := CPUParticles3D.new()
+	sparks.amount = 6
+	sparks.lifetime = 0.5
+	sparks.direction = Vector3.UP
+	sparks.spread = 25.0
+	sparks.initial_velocity_min = 1.0
+	sparks.initial_velocity_max = 2.0
+	sparks.gravity = Vector3.ZERO
+	sparks.position = Vector3(0, 0.3, 0)
+	var spark_mesh := BoxMesh.new()
+	spark_mesh.size = Vector3.ONE * 0.07
+	spark_mesh.material = _glow_material(Color("ffd24d"))
+	sparks.mesh = spark_mesh
+	root.add_child(sparks)
+	add_child(root)
+	return root
 
 
 func _sync_players() -> void:
@@ -466,6 +496,20 @@ func _material(color: Color, transparent := false) -> StandardMaterial3D:
 	material.albedo_color = color
 	if transparent:
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_materials[key] = material
+	return material
+
+
+func _glow_material(color: Color) -> StandardMaterial3D:
+	var key := "glow_%s" % color.to_html(false)
+	if _materials.has(key):
+		return _materials[key]
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 1.5
 	_materials[key] = material
 	return material
 
