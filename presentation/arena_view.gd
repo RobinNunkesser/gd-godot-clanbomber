@@ -14,6 +14,13 @@ const EXTRA_COLORS := {
 	SimExtra.Type.REVERSE: Color("8d6e63"), SimExtra.Type.AUTOBOMB: Color("ec407a"),
 }
 
+const EXTRA_LETTERS := {
+	SimExtra.Type.POWER: "P", SimExtra.Type.BOMB: "B", SimExtra.Type.SKATEBOARD: "S",
+	SimExtra.Type.KICK: "K", SimExtra.Type.GLOVE: "G",
+	SimExtra.Type.OVERDRIVE: "O", SimExtra.Type.REVERSE: "R", SimExtra.Type.AUTOBOMB: "A",
+}
+const DISEASES: Array[int] = [SimExtra.Type.OVERDRIVE, SimExtra.Type.REVERSE, SimExtra.Type.AUTOBOMB]
+
 var world: SimWorld
 
 
@@ -23,7 +30,13 @@ func _draw() -> void:
 	_draw_board()
 	for cell: Vector2i in world.extras:
 		var c: Color = EXTRA_COLORS.get(world.extras[cell], Color.WHITE)
-		draw_circle(_center(cell), 12.0, c)
+		var type: int = world.extras[cell]
+		var center := _center(cell)
+		if type in DISEASES:
+			draw_rect(Rect2(center - Vector2(12, 12), Vector2(24, 24)), c)
+		else:
+			draw_circle(center, 12.0, c)
+		_draw_letter(center, EXTRA_LETTERS.get(type, "?"))
 	for bomb in world.bombs:
 		var pulse := 1.0 + 0.1 * sin(bomb.timer_ms * 0.02)
 		var center := Vector2(bomb.pos) + Vector2(CELL, CELL) / 2.0
@@ -45,6 +58,8 @@ func _draw() -> void:
 		draw_rect(rect, Color.BLACK, false, 2.0)
 		if player.is_diseased():
 			draw_rect(rect.grow(3), EXTRA_COLORS[player.disease], false, 3.0)
+			_draw_letter(rect.get_center(), EXTRA_LETTERS[player.disease], Color.WHITE)
+	_draw_status()
 
 
 func _draw_board() -> void:
@@ -86,3 +101,24 @@ func _draw_floor_marker(tile: int, rect: Rect2) -> void:
 
 func _center(cell: Vector2i) -> Vector2:
 	return Vector2(cell * CELL) + Vector2(CELL, CELL) / 2.0
+
+
+func _draw_letter(center: Vector2, letter: String, color := Color.BLACK) -> void:
+	var font := ThemeDB.fallback_font
+	var size := Vector2(font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 16))
+	draw_string(font, center + Vector2(-size.x / 2.0, 6.0), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, color)
+
+
+# Kurzstatus je Spieler unter der Arena: Bomben, Power, Skateboards, Kick/Glove, Krankheit.
+func _draw_status() -> void:
+	var font := ThemeDB.fallback_font
+	var y := world.board.height * CELL + 52.0
+	for id: int in world.players:
+		var p: SimPlayer = world.players[id]
+		var text := "P%d  B%d P%d S%d%s%s%s" % [
+			id, p.max_bombs, p.power, p.skateboards,
+			" K" if p.can_kick else "", " G" if p.can_glove else "",
+			(" [%s %ds]" % [EXTRA_LETTERS[p.disease], ceili(p.disease_ms / 1000.0)]) if p.is_diseased() else ""]
+		if not p.alive:
+			text += "  tot"
+		draw_string(font, Vector2(8 + (id - 1) * 330, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()].darkened(0.3))

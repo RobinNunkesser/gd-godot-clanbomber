@@ -13,6 +13,6 @@ enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 [display]
 
 window/size/viewport_width=680
-window/size/viewport_height=560
+window/size/viewport_height=590
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"

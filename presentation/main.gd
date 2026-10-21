@@ -73,6 +73,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_load_map()
 		KEY_R:
 			_load_map()
+		KEY_F1:
+			_debug_spawn_extras()
 
 
 func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
@@ -96,3 +98,14 @@ func _check_round_end() -> void:
 		_round_over = true
 		banner.text = "Runde vorbei: %s  (R = Neustart, N = nächste Karte)" % (
 			"Spieler %d gewinnt" % alive[0] if alive.size() == 1 else "Unentschieden")
+
+
+# Testhilfe (F1): legt jeden Extra-Typ in eine Reihe neben Spieler 1.
+func _debug_spawn_extras() -> void:
+	var origin: Vector2i = _world.players[1].cell
+	var type := 0
+	for cell in [Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(1, 2), Vector2i(2, 2)]:
+		var target: Vector2i = origin + cell
+		if not _world.board.is_blocking(target) and type < 8:
+			_world.extras[target] = type
+		type += 1

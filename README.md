@@ -29,10 +29,21 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | WASD, Leertaste | Spieler 1 bewegen, Bombe legen |
 | Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
 | N / P / R | nächste / vorherige Karte / Neustart |
+| F1 | Testhilfe: alle 8 Extras neben Spieler 1 ablegen |
 
 Kick: gegen eine Bombe laufen. Glove: stillstehend auf der eigenen Bombe die Bomben-Taste drücken, geworfen wird in Blickrichtung.
 
-Extras werden durch Betreten aufgenommen (Farben siehe `arena_view.gd`). Kein Ton.
+Extras werden durch Betreten aufgenommen. Kennbuchstaben: Kreis = Extra, Quadrat = Krankheit.
+
+| Buchstabe | Extra | | Buchstabe | Krankheit |
+|---|---|---|---|---|
+| P | Power | | O | Overdrive |
+| B | Bomb | | R | Reverse |
+| S | Skateboard | | A | Autobomb |
+| K | Kick | | | |
+| G | Glove | | | |
+
+Unter der Arena steht je Spieler `B` Bomben, `P` Power, `S` Skateboards, `K`/`G` falls vorhanden und die aktive Krankheit mit Restsekunden. Kranke Spieler tragen einen farbigen Rahmen mit dem Buchstaben. Kein Ton.
 
 ## Tests
 
