@@ -21,3 +21,6 @@ const MAX_POWER := 12
 
 const DISEASE_DURATION_MS := 10000
 const OVERDRIVE_SPEED_BONUS := 600 # px/s
+
+const BOMB_SPEED := 160 # px/s für Kick und Wurf
+const THROW_FIELDS := 4

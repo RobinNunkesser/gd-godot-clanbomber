@@ -6,6 +6,9 @@ signal bomb_exploded(bomb: SimBomb, explosion: SimExplosion)
 signal box_destroyed(cell: Vector2i)
 signal extra_spawned(cell: Vector2i, type: int)
 signal extra_destroyed(cell: Vector2i)
+signal bomb_kicked(bomb: SimBomb)
+signal bomb_thrown(bomb: SimBomb)
+signal bomb_landed(bomb: SimBomb)
 signal extra_collected(player_id: int, type: int)
 signal player_died(player_id: int, killer_id: int)
 
@@ -50,6 +53,8 @@ func set_move_dir(player_id: int, dir: Vector2i) -> void:
 	var clean := Vector2i(signi(dir.x), 0) if dir.x != 0 else Vector2i(0, signi(dir.y))
 	if clean != player.move_dir:
 		player.move_remainder_milli = 0
+	if clean != Vector2i.ZERO:
+		player.facing = -clean if player.disease == SimExtra.Type.REVERSE else clean
 	player.move_dir = clean
 
 
@@ -63,7 +68,7 @@ func is_other_player_in(cell: Vector2i, except_id: int) -> bool:
 
 func bomb_at(cell: Vector2i) -> SimBomb:
 	for bomb in bombs:
-		if bomb.cell == cell:
+		if not bomb.flying and bomb.cell == cell:
 			return bomb
 	return null
 
@@ -86,13 +91,60 @@ func place_bomb(player_id: int) -> SimBomb:
 	return bomb
 
 
+# Bomben-Taste: Mit Handschuh und stehend wird eine Bombe auf der eigenen Zelle geworfen, sonst eine gelegt.
+func action_bomb(player_id: int) -> SimBomb:
+	var player: SimPlayer = players.get(player_id)
+	if player == null or not player.alive:
+		return null
+	var under := bomb_at(player.cell)
+	if under != null:
+		if player.can_glove and not player.moved:
+			throw_bomb(under, player.facing)
+		return null
+	return place_bomb(player_id)
+
+
+func kick_bomb(bomb: SimBomb, dir: Vector2i) -> void:
+	bomb.move_dir = dir
+	bomb.move_remainder_milli = 0
+	bomb_kicked.emit(bomb)
+
+
+# Wirft die Bombe bis zu THROW_FIELDS Zellen weit. Wände und Boxen halten sie vorher an. Gibt zurück, ob sie fliegt.
+func throw_bomb(bomb: SimBomb, dir: Vector2i) -> bool:
+	if bomb.flying:
+		return false
+	var fields := _free_fields(bomb.cell, dir, SimConstants.THROW_FIELDS)
+	if fields == 0:
+		return false
+	bomb.snap()
+	bomb.move_dir = Vector2i.ZERO
+	bomb.flying = true
+	bomb.fly_dir = dir
+	bomb.fly_remaining_px = fields * int(SimConstants.CELL_SIZE)
+	bomb.fly_remainder_milli = 0
+	bomb_thrown.emit(bomb)
+	return true
+
+
+func _free_fields(origin: Vector2i, dir: Vector2i, max_fields: int) -> int:
+	var count := 0
+	for i in range(1, max_fields + 1):
+		if board.is_blocking(origin + dir * i):
+			break
+		count += 1
+	return count
+
+
 func tick(dt_ms: int) -> void:
 	_move_players(dt_ms)
+	_move_bombs(dt_ms)
 	_collect_extras()
 	_update_diseases(dt_ms)
 	_age_explosions(dt_ms)
 	for bomb in bombs:
-		bomb.timer_ms -= dt_ms
+		if not bomb.flying:
+			bomb.timer_ms -= dt_ms
 	_detonate_due_bombs()
 	_resolve_pending_boxes()
 	_apply_explosion_damage()
@@ -102,13 +154,48 @@ func _move_players(dt_ms: int) -> void:
 	for id in players:
 		var player: SimPlayer = players[id]
 		if not player.alive or player.move_dir == Vector2i.ZERO:
+			player.moved = false
 			continue
 		var dir := -player.move_dir if player.disease == SimExtra.Type.REVERSE else player.move_dir
 		player.move_remainder_milli += player.speed() * dt_ms
 		var span := player.move_remainder_milli / 1000
 		player.move_remainder_milli -= span * 1000
+		var before := player.pos
 		if not SimMovement.advance(self, player, dir, span):
 			player.move_remainder_milli = 0
+		player.moved = player.pos != before
+
+
+func _move_bombs(dt_ms: int) -> void:
+	for bomb in bombs:
+		if bomb.flying:
+			_fly(bomb, dt_ms)
+		elif bomb.move_dir != Vector2i.ZERO:
+			bomb.move_remainder_milli += SimConstants.BOMB_SPEED * dt_ms
+			var span := bomb.move_remainder_milli / 1000
+			bomb.move_remainder_milli -= span * 1000
+			if not SimMovement.advance_bomb(self, bomb, span):
+				bomb.move_dir = Vector2i.ZERO
+				bomb.move_remainder_milli = 0
+				bomb.snap()
+
+
+# Landet auf einer Zelle mit einer anderen Bombe, fliegt sie eine Zelle weiter oder schwebt, bis das möglich ist.
+func _fly(bomb: SimBomb, dt_ms: int) -> void:
+	bomb.fly_remainder_milli += SimConstants.BOMB_SPEED * dt_ms
+	var span := mini(bomb.fly_remainder_milli / 1000, bomb.fly_remaining_px)
+	bomb.fly_remainder_milli -= bomb.fly_remainder_milli / 1000 * 1000
+	bomb.pos += bomb.fly_dir * span
+	bomb.fly_remaining_px -= span
+	if bomb.fly_remaining_px > 0:
+		return
+	bomb.snap()
+	if bomb_at(bomb.cell) != null:
+		if _free_fields(bomb.cell, bomb.fly_dir, 1) == 1:
+			bomb.fly_remaining_px = int(SimConstants.CELL_SIZE)
+		return
+	bomb.flying = false
+	bomb_landed.emit(bomb)
 
 
 func _age_explosions(dt_ms: int) -> void:
@@ -121,7 +208,7 @@ func _detonate_due_bombs() -> void:
 	while true:
 		var due: SimBomb = null
 		for bomb in bombs:
-			if bomb.timer_ms <= 0 and (due == null or bomb.id < due.id):
+			if not bomb.flying and bomb.timer_ms <= 0 and (due == null or bomb.id < due.id):
 				due = bomb
 		if due == null:
 			return
@@ -165,7 +252,7 @@ func _cast_ray(explosion: SimExplosion, power: int, dir: Vector2i) -> void:
 
 func _chain_bomb_at(cell: Vector2i) -> void:
 	for other in bombs:
-		if other.cell == cell:
+		if not other.flying and other.cell == cell:
 			other.timer_ms = mini(other.timer_ms, SimConstants.BOMB_CHAIN_DELAY_MS)
 
 

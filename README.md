@@ -4,7 +4,7 @@ Moderne Godot-4-Neuauflage von *ClanBomber* (2.5D-Präsentation, 2D-Simulationsk
 
 Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot/` mit `GDD.md` (normativ) und `docs/reference/ORIGINAL_BEHAVIOR.md` (Verhalten des Originals, Clean-Room-Referenz).
 
-## Stand: Slice 3 (Extras und Krankheiten)
+## Stand: Slice 4 (Kick und Glove)
 
 Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahligen Millisekunden für bitgenaue Reproduzierbarkeit:
 
@@ -15,9 +15,10 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` | Bomben, Kettenreaktion (0,1 s), Strahlberechnung bei Zündung, Explosion 0,5 s, Tod/Kill-Zählung, Box-Drops |
 | `sim_movement.gd`, `sim_player.gd` | Pixelbewegung (90 px/s + 40 je Skateboard), Blockaderegeln für Bomben und Spieler, Corner-Sliding |
 | `sim_world.gd` (Extras) | Aufnahme per Betreten, Obergrenzen, Heilen durch jede Aufnahme (Krankheits-Extra taucht neu auf), Overdrive/Reverse/Autobomb (10 s), Ansteckung, Extras fallen beim Tod |
+| `sim_bomb.gd`, `sim_movement.gd` | Kick (Bombe rollt mit 160 px/s bis zum Hindernis und schnappt ein), Wurf mit Glove (4 Zellen, Zünder steht während des Flugs, Wände und Boxen halten an, auf besetzter Landezelle eine Zelle weiter) |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: Wirkung von Kick und Glove (die Flags werden gesetzt), Ice/Arrow/Trap-Verhalten, Sudden Death, AI, Rundenverwaltung, Ton, Grafik.
+Noch nicht enthalten: Ice/Arrow/Trap-Verhalten, Sudden Death, AI, Rundenverwaltung, Ton, Grafik.
 
 ## Spielbarer Prototyp (2D-Platzhalter)
 
@@ -28,6 +29,8 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | WASD, Leertaste | Spieler 1 bewegen, Bombe legen |
 | Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
 | N / P / R | nächste / vorherige Karte / Neustart |
+
+Kick: gegen eine Bombe laufen. Glove: stillstehend auf der eigenen Bombe die Bomben-Taste drücken, geworfen wird in Blickrichtung.
 
 Extras werden durch Betreten aufgenommen (Farben siehe `arena_view.gd`). Kein Ton.
 

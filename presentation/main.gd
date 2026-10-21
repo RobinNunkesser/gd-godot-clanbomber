@@ -62,9 +62,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match key.keycode:
 		KEY_SPACE:
-			_world.place_bomb(1)
+			_world.action_bomb(1)
 		KEY_ENTER, KEY_KP_ENTER:
-			_world.place_bomb(2)
+			_world.action_bomb(2)
 		KEY_N:
 			_map_index = (_map_index + 1) % _maps.size()
 			_load_map()

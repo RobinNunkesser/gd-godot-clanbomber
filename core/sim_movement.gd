@@ -18,12 +18,27 @@ static func _step(world: SimWorld, player: SimPlayer, dir: Vector2i) -> bool:
 	if world.board.is_blocking(ahead):
 		return false
 	# Eine Bombe blockiert nur, wenn die Figur nicht schon (zu mehr als der Hälfte) auf deren Zelle steht.
-	if ahead != player.cell and world.bomb_at(ahead) != null:
+	var bomb := world.bomb_at(ahead) if ahead != player.cell else null
+	if bomb != null:
+		if player.can_kick and bomb.move_dir == Vector2i.ZERO:
+			world.kick_bomb(bomb, dir)
 		return false
 	if ahead != player.cell and world.is_other_player_in(ahead, player.id):
 		return false
 	player.pos += dir
 	_slide_into_lane(world, player, dir)
+	return true
+
+
+# Rollt eine gekickte Bombe um bis zu span Pixel. Gibt zurück, ob alle Schritte möglich waren.
+static func advance_bomb(world: SimWorld, bomb: SimBomb, span: int) -> bool:
+	for i in span:
+		var ahead := _cell_at(_lead_point(bomb.pos, bomb.move_dir))
+		if world.board.is_blocking(ahead):
+			return false
+		if ahead != bomb.cell and (world.bomb_at(ahead) != null or world.is_other_player_in(ahead, -1)):
+			return false
+		bomb.pos += bomb.move_dir
 	return true
 
 

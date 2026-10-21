@@ -26,8 +26,13 @@ func _draw() -> void:
 		draw_circle(_center(cell), 12.0, c)
 	for bomb in world.bombs:
 		var pulse := 1.0 + 0.1 * sin(bomb.timer_ms * 0.02)
-		draw_circle(_center(bomb.cell), 14.0 * pulse, Color("212121"))
-		draw_circle(_center(bomb.cell) + Vector2(-4, -4), 3.0, Color("757575"))
+		var center := Vector2(bomb.pos) + Vector2(CELL, CELL) / 2.0
+		if bomb.flying:
+			draw_circle(center + Vector2(0, 8), 10.0, Color(0, 0, 0, 0.25))
+			center.y -= 14.0
+			pulse *= 1.2
+		draw_circle(center, 14.0 * pulse, Color("212121"))
+		draw_circle(center + Vector2(-4, -4), 3.0, Color("757575"))
 	for explosion in world.explosions:
 		for cell in explosion.cells:
 			draw_rect(Rect2(Vector2(cell * CELL) + Vector2(4, 4), Vector2(CELL - 8, CELL - 8)), Color(1.0, 0.65, 0.1, 0.9))

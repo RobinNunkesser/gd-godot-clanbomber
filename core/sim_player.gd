@@ -16,6 +16,9 @@ var active_bombs := 0
 var power := SimConstants.START_POWER
 var skateboards := 0
 var kills := 0
+# Letzte Blickrichtung (bestimmt die Wurfrichtung) und ob die Figur im letzten Tick gelaufen ist.
+var facing := Vector2i.DOWN
+var moved := false
 var can_kick := false
 var can_glove := false
 # Aufgesammelte Extras (ohne Startausrüstung); sie fallen beim Tod wieder aus.
