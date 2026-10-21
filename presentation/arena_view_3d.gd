@@ -4,11 +4,12 @@ extends Node3D
 
 const CELL := SimConstants.CELL_SIZE
 const PLATFORMER_DIR := "res://assets/models/platformer/"
-const CHARACTER_MODELS := ["oozi", "oobi", "oopi", "oodi", "oozi", "oobi", "oopi", "oodi"]
-const WALL_SCENE := preload("res://assets/models/platformer/block-grass.glb")
-const BOX_SCENE := preload("res://assets/models/platformer/crate.glb")
+const CHARACTER_MODELS := ["oozi", "oobi", "oopi", "oodi", "human", "orc", "oozi", "oobi"]
+const WALL_SCENE := preload("res://assets/models/mini-dungeon/wall.glb")
+const TRAP_SCENE := preload("res://assets/models/mini-dungeon/trap.glb")
+const BOX_SCENE := preload("res://assets/models/mini-dungeon/barrel.glb")
 const BOMB_SCENE := preload("res://assets/models/platformer/bomb.glb")
-const FLOOR_SCENE := preload("res://assets/models/arena/template-floor.glb")
+const FLOOR_SCENE := preload("res://assets/models/mini-dungeon/floor.glb")
 const PLAYER_COLORS: Array[Color] = [
 	Color("e8504a"), Color("4a90e8"), Color("5bc45b"), Color("e8c84a"),
 	Color("b06ae0"), Color("e88a4a"), Color("4ac8c8"), Color("d0d0d0"),
@@ -119,7 +120,7 @@ func _build_board() -> void:
 
 func _make_wall(cell: Vector2i) -> void:
 	var wall: Node3D = WALL_SCENE.instantiate()
-	wall.scale = Vector3(0.92, 0.6, 0.92)
+	wall.scale = Vector3(0.98, 1.0, 0.98)
 	wall.position = Vector3(cell.x + 0.5, 0, cell.y + 0.5)
 	_static_root.add_child(wall)
 	_walls[cell] = wall
@@ -132,27 +133,21 @@ func _make_tile_root(cell: Vector2i, tile: int) -> void:
 	_static_root.add_child(root)
 	_tile_roots[cell] = root
 	var floor_node: Node3D = FLOOR_SCENE.instantiate()
-	floor_node.scale = Vector3.ONE * 0.25
+	floor_node.scale = Vector3.ONE * 1.005
 	root.add_child(floor_node)
 	match tile:
 		SimTile.Type.BOX:
 			var crate: Node3D = BOX_SCENE.instantiate()
-			crate.scale = Vector3.ONE * 1.7
+			crate.scale = Vector3.ONE * 1.75
 			crate.position = root.position
 			add_child(crate)
 			_boxes[cell] = crate
 		SimTile.Type.ICE:
 			root.add_child(_add_plane(_material(Color(0.6, 0.85, 1.0, 0.55), true), Vector3(0, 0.02, 0)))
 		SimTile.Type.TRAP:
-			var disc := MeshInstance3D.new()
-			var cylinder := CylinderMesh.new()
-			cylinder.top_radius = 0.34
-			cylinder.bottom_radius = 0.34
-			cylinder.height = 0.03
-			disc.mesh = cylinder
-			disc.material_override = _material(Color("2b1d17"))
-			disc.position = Vector3(0, 0.02, 0)
-			root.add_child(disc)
+			var trap: Node3D = TRAP_SCENE.instantiate()
+			trap.scale = Vector3(0.9, 0.5, 0.9)
+			root.add_child(trap)
 		_:
 			if ARROW_GLYPHS.has(tile):
 				_add_floor_glyph(root, ARROW_GLYPHS[tile])
@@ -195,7 +190,7 @@ func _add_floor_glyph(parent: Node3D, glyph: String) -> void:
 
 func _make_player(id: int) -> Node3D:
 	var root := Node3D.new()
-	var model: Node3D = load("%scharacter-%s.glb" % [PLATFORMER_DIR, CHARACTER_MODELS[(id - 1) % CHARACTER_MODELS.size()]]).instantiate()
+	var model: Node3D = load(_character_path(CHARACTER_MODELS[(id - 1) % CHARACTER_MODELS.size()])).instantiate()
 	model.name = "Model"
 	model.scale = Vector3.ONE * 0.85
 	root.add_child(model)
@@ -221,6 +216,12 @@ func _make_player(id: int) -> Node3D:
 	if animations != null:
 		animations.play("idle")
 	return root
+
+
+func _character_path(name: String) -> String:
+	if name == "human" or name == "orc":
+		return "res://assets/models/mini-dungeon/character-%s.glb" % name
+	return "%scharacter-%s.glb" % [PLATFORMER_DIR, name]
 
 
 func _animation_player(root: Node) -> AnimationPlayer:

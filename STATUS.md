@@ -48,7 +48,7 @@ Simulationskern (98 Tests grün):
 Präsentation:
 - 2D-Platzhalteransicht (`presentation/arena_view.gd`) und 3D-Ansicht (`presentation/arena_view_3d.gd`), Umschalten mit F2. Standard ist 3D.
 - Ton: `presentation/sfx.gd`, 12 Effekte, in `presentation/main.gd` mit den Spielereignissen verbunden.
-- Grafik: Kenney Platformer Kit (Wände `block-grass`, Boxen `crate`, Bomben `bomb`, Figuren `oozi/oobi/oopi/oodi`), Boden aus dem Modular Dungeon Kit. Extras, Flammen, Eis, Trap und Pfeile sind Primitive bzw. Beschriftungen.
+- Grafik (Mischung aus zwei Kenney-Kits, CC0): Mini Dungeon für Wände (`wall`), Boden (`floor`), Boxen (`barrel`), Trap (`trap`) und Figuren 5/6 (`human`, `orc`); Platformer Kit für Bomben (`bomb`) und Figuren 1–4 (`oozi/oobi/oopi/oodi`). Zuordnung als Konstanten oben in `arena_view_3d.gd`. Extras, Flammen, Eis, Trap und Pfeile sind Primitive bzw. Beschriftungen.
 - 37 Karten in `maps/` (alle Eigenkarten des Autors).
 
 ## Entscheidungen
@@ -75,7 +75,8 @@ Präsentation:
 
 - Figuren sind in der 3D-Ansicht klein und schwer zu unterscheiden (Skalierung in `arena_view_3d.gd`, `model.scale`; Spielerring zeigt die Farbe). Ab Spieler 5 wiederholen sich die Modelle.
 - Extras, Flammen, Eis, Trap, Pfeile sind noch Platzhalter-Primitive.
-- Die Blocky Characters unter `assets/models/characters/` sind ungenutzt (entfernen oder für den Kids-Mode behalten).
+- Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
+- Mini Dungeon bietet zusätzlich `potion`, `coin`, `key`, `chest`, `column` und `rocks`, die als Extras bzw. Dekor taugen (noch nicht genutzt).
 - Es gibt nur 2 Spieler und `crossroads.map` als Startkarte (N/P wechselt).
 - Keine Musik (in keinem der Pakete enthalten).
 - Ton und Animationen sind noch nicht im Spiel beurteilt worden.
