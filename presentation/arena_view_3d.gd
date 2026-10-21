@@ -3,8 +3,11 @@ extends Node3D
 ## 2.5D-Präsentation mit Kenney-Assets (CC0). Liest nur den Zustand der Simulation. 1 Zelle = 1 Einheit, y ist oben.
 
 const CELL := SimConstants.CELL_SIZE
-const CHARACTER_DIR := "res://assets/models/characters/"
-const CHARACTER_LETTERS := ["a", "d", "h", "k", "m", "o", "q", "r"]
+const PLATFORMER_DIR := "res://assets/models/platformer/"
+const CHARACTER_MODELS := ["oozi", "oobi", "oopi", "oodi", "oozi", "oobi", "oopi", "oodi"]
+const WALL_SCENE := preload("res://assets/models/platformer/block-grass.glb")
+const BOX_SCENE := preload("res://assets/models/platformer/crate.glb")
+const BOMB_SCENE := preload("res://assets/models/platformer/bomb.glb")
 const FLOOR_SCENE := preload("res://assets/models/arena/template-floor.glb")
 const PLAYER_COLORS: Array[Color] = [
 	Color("e8504a"), Color("4a90e8"), Color("5bc45b"), Color("e8c84a"),
@@ -106,7 +109,10 @@ func _build_board() -> void:
 				continue
 			var center := Vector3(x + 0.5, 0, y + 0.5)
 			if tile == SimTile.Type.WALL:
-				_add_mesh(_static_root, _wall_mesh, _material(Color("5b6470")), center + Vector3(0, 0.3, 0))
+				var wall: Node3D = WALL_SCENE.instantiate()
+				wall.scale = Vector3(0.92, 0.6, 0.92)
+				wall.position = center
+				_static_root.add_child(wall)
 				continue
 			var floor_node: Node3D = FLOOR_SCENE.instantiate()
 			floor_node.scale = Vector3.ONE * 0.25
@@ -114,7 +120,11 @@ func _build_board() -> void:
 			_static_root.add_child(floor_node)
 			match tile:
 				SimTile.Type.BOX:
-					_boxes[cell] = _add_mesh(self, _box_mesh, _material(Color("b07a45")), center + Vector3(0, 0.44, 0))
+					var crate: Node3D = BOX_SCENE.instantiate()
+					crate.scale = Vector3.ONE * 1.7
+					crate.position = center
+					add_child(crate)
+					_boxes[cell] = crate
 				SimTile.Type.ICE:
 					var ice := _add_plane(_material(Color(0.6, 0.85, 1.0, 0.55), true), center + Vector3(0, 0.02, 0))
 					_static_root.add_child(ice)
@@ -147,10 +157,9 @@ func _add_floor_glyph(center: Vector3, glyph: String, tile: int) -> void:
 
 func _make_player(id: int) -> Node3D:
 	var root := Node3D.new()
-	var letter: String = CHARACTER_LETTERS[(id - 1) % CHARACTER_LETTERS.size()]
-	var model: Node3D = load("%scharacter-%s.glb" % [CHARACTER_DIR, letter]).instantiate()
+	var model: Node3D = load("%scharacter-%s.glb" % [PLATFORMER_DIR, CHARACTER_MODELS[(id - 1) % CHARACTER_MODELS.size()]]).instantiate()
 	model.name = "Model"
-	model.scale = Vector3.ONE * 0.35
+	model.scale = Vector3.ONE * 0.85
 	root.add_child(model)
 	var ring := MeshInstance3D.new()
 	var torus := CylinderMesh.new()
@@ -206,16 +215,17 @@ func _sync_bombs() -> void:
 			if _bombs.has(bomb.id):
 				_bombs[bomb.id].visible = false
 			continue
-		var node: MeshInstance3D = _bombs.get(bomb.id)
+		var node: Node3D = _bombs.get(bomb.id)
 		if node == null:
-			node = _add_mesh(self, _bomb_mesh, _material(Color("202226")), Vector3.ZERO)
+			node = BOMB_SCENE.instantiate()
+			add_child(node)
 			_bombs[bomb.id] = node
 		node.visible = true
-		var lift := 0.4
+		var lift := 0.0
 		if bomb.flying or bomb.trap_flight:
-			lift = 1.2
+			lift = 0.8
 		var pulse := 1.0 + 0.08 * sin(bomb.timer_ms * 0.02)
-		node.scale = Vector3.ONE * pulse
+		node.scale = Vector3.ONE * 1.5 * pulse
 		node.position = _world_pos(Vector2(bomb.pos)) + Vector3(0, lift, 0)
 	for id: int in _bombs.keys():
 		if not live.has(id):
