@@ -16,6 +16,17 @@ var active_bombs := 0
 var power := SimConstants.START_POWER
 var skateboards := 0
 var kills := 0
+var can_kick := false
+var can_glove := false
+# Aufgesammelte Extras (ohne Startausrüstung); sie fallen beim Tod wieder aus.
+var extra_bombs := 0
+var extra_power := 0
+var extra_skateboards := 0
+var extra_kick := 0
+var extra_gloves := 0
+# Aktive Krankheit (SimExtra.Type.OVERDRIVE/REVERSE/AUTOBOMB) oder NONE.
+var disease: int = SimExtra.Type.NONE
+var disease_ms := 0
 # Gewünschte Bewegungsrichtung (kardinal oder ZERO).
 var move_dir := Vector2i.ZERO
 # Bruchrest in Tausendstel-Pixeln, damit Geschwindigkeit unabhängig von der Tickrate exakt bleibt.
@@ -23,7 +34,14 @@ var move_remainder_milli := 0
 
 
 func speed() -> int:
-	return SimConstants.BASE_PLAYER_SPEED + SimConstants.SKATEBOARD_SPEED_BONUS * mini(skateboards, SimConstants.MAX_SKATEBOARDS)
+	var value := SimConstants.BASE_PLAYER_SPEED + SimConstants.SKATEBOARD_SPEED_BONUS * mini(skateboards, SimConstants.MAX_SKATEBOARDS)
+	if disease == SimExtra.Type.OVERDRIVE:
+		value += SimConstants.OVERDRIVE_SPEED_BONUS
+	return value
+
+
+func is_diseased() -> bool:
+	return disease != SimExtra.Type.NONE
 
 
 func can_place_bomb() -> bool:

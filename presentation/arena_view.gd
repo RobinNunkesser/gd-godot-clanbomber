@@ -38,6 +38,8 @@ func _draw() -> void:
 		var rect := Rect2(Vector2(player.pos) + Vector2(4, 4), Vector2(CELL - 8, CELL - 8))
 		draw_rect(rect, PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()])
 		draw_rect(rect, Color.BLACK, false, 2.0)
+		if player.is_diseased():
+			draw_rect(rect.grow(3), EXTRA_COLORS[player.disease], false, 3.0)
 
 
 func _draw_board() -> void:

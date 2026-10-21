@@ -18,3 +18,6 @@ const START_BOMBS := 1
 const MAX_BOMBS := 9
 const START_POWER := 1
 const MAX_POWER := 12
+
+const DISEASE_DURATION_MS := 10000
+const OVERDRIVE_SPEED_BONUS := 600 # px/s

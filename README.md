@@ -4,7 +4,7 @@ Moderne Godot-4-Neuauflage von *ClanBomber* (2.5D-Präsentation, 2D-Simulationsk
 
 Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot/` mit `GDD.md` (normativ) und `docs/reference/ORIGINAL_BEHAVIOR.md` (Verhalten des Originals, Clean-Room-Referenz).
 
-## Stand: Slice 2 (Simulationskern mit Bewegung)
+## Stand: Slice 3 (Extras und Krankheiten)
 
 Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahligen Millisekunden für bitgenaue Reproduzierbarkeit:
 
@@ -14,9 +14,10 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_board.gd`, `sim_tile.gd` | Raster und Kacheltypen |
 | `sim_world.gd` | Bomben, Kettenreaktion (0,1 s), Strahlberechnung bei Zündung, Explosion 0,5 s, Tod/Kill-Zählung, Box-Drops |
 | `sim_movement.gd`, `sim_player.gd` | Pixelbewegung (90 px/s + 40 je Skateboard), Blockaderegeln für Bomben und Spieler, Corner-Sliding |
+| `sim_world.gd` (Extras) | Aufnahme per Betreten, Obergrenzen, Heilen durch jede Aufnahme (Krankheits-Extra taucht neu auf), Overdrive/Reverse/Autobomb (10 s), Ansteckung, Extras fallen beim Tod |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: Extra-Aufnahme, Kick/Glove, Ice/Arrow/Trap-Verhalten, Sudden Death, Handicaps, AI, Präsentation.
+Noch nicht enthalten: Wirkung von Kick und Glove (die Flags werden gesetzt), Ice/Arrow/Trap-Verhalten, Sudden Death, AI, Rundenverwaltung, Ton, Grafik.
 
 ## Spielbarer Prototyp (2D-Platzhalter)
 
@@ -28,7 +29,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
 | N / P / R | nächste / vorherige Karte / Neustart |
 
-Extras fallen und werden angezeigt, können aber noch nicht aufgenommen werden. Kein Ton.
+Extras werden durch Betreten aufgenommen (Farben siehe `arena_view.gd`). Kein Ton.
 
 ## Tests
 

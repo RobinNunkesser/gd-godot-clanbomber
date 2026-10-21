@@ -6,6 +6,7 @@ signal bomb_exploded(bomb: SimBomb, explosion: SimExplosion)
 signal box_destroyed(cell: Vector2i)
 signal extra_spawned(cell: Vector2i, type: int)
 signal extra_destroyed(cell: Vector2i)
+signal extra_collected(player_id: int, type: int)
 signal player_died(player_id: int, killer_id: int)
 
 const DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
@@ -87,6 +88,8 @@ func place_bomb(player_id: int) -> SimBomb:
 
 func tick(dt_ms: int) -> void:
 	_move_players(dt_ms)
+	_collect_extras()
+	_update_diseases(dt_ms)
 	_age_explosions(dt_ms)
 	for bomb in bombs:
 		bomb.timer_ms -= dt_ms
@@ -100,10 +103,11 @@ func _move_players(dt_ms: int) -> void:
 		var player: SimPlayer = players[id]
 		if not player.alive or player.move_dir == Vector2i.ZERO:
 			continue
+		var dir := -player.move_dir if player.disease == SimExtra.Type.REVERSE else player.move_dir
 		player.move_remainder_milli += player.speed() * dt_ms
 		var span := player.move_remainder_milli / 1000
 		player.move_remainder_milli -= span * 1000
-		if not SimMovement.advance(self, player, player.move_dir, span):
+		if not SimMovement.advance(self, player, dir, span):
 			player.move_remainder_milli = 0
 
 
@@ -182,7 +186,109 @@ func _apply_explosion_damage() -> void:
 			var player: SimPlayer = players[player_id]
 			if player.alive and player.cell in explosion.cells:
 				player.alive = false
+				_drop_collected_extras(player)
 				var killer_id := explosion.owner_id
 				if killer_id != player.id and players.has(killer_id):
 					players[killer_id].kills += 1
 				player_died.emit(player.id, killer_id)
+
+
+# Aufnahme beim Betreten (gerundete Zelle). Jede Aufnahme heilt zuerst eine aktive Krankheit.
+func _collect_extras() -> void:
+	for id in players:
+		var player: SimPlayer = players[id]
+		if not player.alive or not extras.has(player.cell):
+			continue
+		var type: int = extras[player.cell]
+		extras.erase(player.cell)
+		_cure(player)
+		_apply_extra(player, type)
+		extra_collected.emit(player.id, type)
+
+
+func _apply_extra(player: SimPlayer, type: int) -> void:
+	match type:
+		SimExtra.Type.BOMB:
+			if player.max_bombs < SimConstants.MAX_BOMBS:
+				player.max_bombs += 1
+				player.extra_bombs += 1
+		SimExtra.Type.POWER:
+			if player.power < SimConstants.MAX_POWER:
+				player.power += 1
+				player.extra_power += 1
+		SimExtra.Type.SKATEBOARD:
+			if player.skateboards < SimConstants.MAX_SKATEBOARDS:
+				player.skateboards += 1
+				player.extra_skateboards += 1
+		SimExtra.Type.KICK:
+			player.can_kick = true
+			player.extra_kick += 1
+		SimExtra.Type.GLOVE:
+			player.can_glove = true
+			player.extra_gloves += 1
+		SimExtra.Type.OVERDRIVE, SimExtra.Type.REVERSE, SimExtra.Type.AUTOBOMB:
+			_infect(player, type)
+
+
+func _infect(player: SimPlayer, type: int) -> void:
+	player.disease = type
+	player.disease_ms = SimConstants.DISEASE_DURATION_MS
+	player.move_remainder_milli = 0
+
+
+# Beim Heilen taucht das passende Krankheits-Extra wieder auf dem Feld auf.
+func _cure(player: SimPlayer) -> void:
+	if not player.is_diseased():
+		return
+	var type := player.disease
+	player.disease = SimExtra.Type.NONE
+	player.disease_ms = 0
+	_spawn_extra_on_free_cell(type)
+
+
+func _update_diseases(dt_ms: int) -> void:
+	for id in players:
+		var player: SimPlayer = players[id]
+		if not player.alive or not player.is_diseased():
+			continue
+		player.disease_ms -= dt_ms
+		if player.disease_ms <= 0:
+			player.disease = SimExtra.Type.NONE
+			player.disease_ms = 0
+			continue
+		if player.disease == SimExtra.Type.AUTOBOMB:
+			place_bomb(player.id)
+		for other_id in players:
+			var other: SimPlayer = players[other_id]
+			if other != player and other.alive and not other.is_diseased() and other.cell == player.cell:
+				_infect(other, player.disease)
+
+
+# Eingesammelte Extras fallen beim Tod auf zufällige freie Felder (Startausrüstung nicht).
+func _drop_collected_extras(player: SimPlayer) -> void:
+	for pair in [
+		[SimExtra.Type.BOMB, player.extra_bombs], [SimExtra.Type.POWER, player.extra_power],
+		[SimExtra.Type.SKATEBOARD, player.extra_skateboards], [SimExtra.Type.KICK, player.extra_kick],
+		[SimExtra.Type.GLOVE, player.extra_gloves],
+	]:
+		for i in pair[1]:
+			_spawn_extra_on_free_cell(pair[0])
+	player.extra_bombs = 0
+	player.extra_power = 0
+	player.extra_skateboards = 0
+	player.extra_kick = 0
+	player.extra_gloves = 0
+
+
+func _spawn_extra_on_free_cell(type: int) -> void:
+	var free: Array[Vector2i] = []
+	for y in board.height:
+		for x in board.width:
+			var cell := Vector2i(x, y)
+			if not board.is_blocking(cell) and not extras.has(cell) and bomb_at(cell) == null:
+				free.append(cell)
+	if free.is_empty():
+		return
+	var target: Vector2i = free[rng.randi() % free.size()]
+	extras[target] = type
+	extra_spawned.emit(target, type)
