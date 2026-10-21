@@ -4,6 +4,8 @@ Moderne Godot-4-Neuauflage von *ClanBomber* (2.5D-Präsentation, 2D-Simulationsk
 
 Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot/` mit `GDD.md` (normativ) und `docs/reference/ORIGINAL_BEHAVIOR.md` (Verhalten des Originals, Clean-Room-Referenz).
 
+Aktueller Stand und nächste Schritte: [STATUS.md](STATUS.md).
+
 ## Stand: Slice 5 (Ice, Arrow, Trap)
 
 Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahligen Millisekunden für bitgenaue Reproduzierbarkeit:
@@ -19,7 +21,7 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` (Kacheln) | Ice: Figuren rutschen mit 80 px/s in Blickrichtung weiter, gerollte Bomben werden schneller. Arrow: schiebt Bomben in Pfeilrichtung, entgegenkommende Bomben werden 0,5 s gehalten und umgelenkt. Trap: hält Bomben 1 s, dann Flug (200 px/s, über Wände) auf ein zufälliges freies Feld, dort Zünder 10 ms |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: Sudden Death, AI, Rundenverwaltung, Ton, Grafik.
+Noch nicht enthalten: Sudden Death, AI, Rundenverwaltung, Musik.
 
 ## Spielbarer Prototyp (2D-Platzhalter)
 
