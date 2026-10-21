@@ -76,7 +76,7 @@ Präsentation:
 - Figuren sind in der 3D-Ansicht klein und schwer zu unterscheiden (Skalierung in `arena_view_3d.gd`, `model.scale`; Spielerring zeigt die Farbe). Ab Spieler 5 wiederholen sich die Modelle.
 - Extras, Flammen, Eis, Trap, Pfeile sind noch Platzhalter-Primitive.
 - Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
-- Mini Dungeon bietet zusätzlich `potion`, `coin`, `key`, `chest`, `column` und `rocks`, die als Extras bzw. Dekor taugen (noch nicht genutzt).
+- Extras sind Mini-Dungeon-Modelle (`weapon-sword` Power, `pot` Bomb, `coin` Skateboard, `weapon-spear` Kick, `shield-round` Glove, `potion` für die drei Krankheiten, farblich getönt) plus schwebender Buchstabe; Zuordnung in `EXTRA_MODELS` in `arena_view_3d.gd`. Ungenutzt: `key`, `chest`, `column`, `rocks`.
 - Es gibt nur 2 Spieler und `crossroads.map` als Startkarte (N/P wechselt).
 - Keine Musik (in keinem der Pakete enthalten).
 - Ton und Animationen sind noch nicht im Spiel beurteilt worden.

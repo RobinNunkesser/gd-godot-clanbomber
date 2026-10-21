@@ -14,6 +14,16 @@ const PLAYER_COLORS: Array[Color] = [
 	Color("e8504a"), Color("4a90e8"), Color("5bc45b"), Color("e8c84a"),
 	Color("b06ae0"), Color("e88a4a"), Color("4ac8c8"), Color("d0d0d0"),
 ]
+const EXTRA_MODELS := {
+	SimExtra.Type.POWER: "res://assets/models/mini-dungeon/weapon-sword.glb",
+	SimExtra.Type.BOMB: "res://assets/models/mini-dungeon/pot.glb",
+	SimExtra.Type.SKATEBOARD: "res://assets/models/mini-dungeon/coin.glb",
+	SimExtra.Type.KICK: "res://assets/models/mini-dungeon/weapon-spear.glb",
+	SimExtra.Type.GLOVE: "res://assets/models/mini-dungeon/shield-round.glb",
+	SimExtra.Type.OVERDRIVE: "res://assets/models/mini-dungeon/potion.glb",
+	SimExtra.Type.REVERSE: "res://assets/models/mini-dungeon/potion.glb",
+	SimExtra.Type.AUTOBOMB: "res://assets/models/mini-dungeon/potion.glb",
+}
 const EXTRA_COLORS := {
 	SimExtra.Type.POWER: Color("ff7043"), SimExtra.Type.BOMB: Color("90a4ae"),
 	SimExtra.Type.SKATEBOARD: Color("66bb6a"), SimExtra.Type.KICK: Color("42a5f5"),
@@ -49,7 +59,6 @@ var _wall_mesh := BoxMesh.new()
 var _box_mesh := BoxMesh.new()
 var _bomb_mesh := SphereMesh.new()
 var _flame_mesh := BoxMesh.new()
-var _extra_mesh := BoxMesh.new()
 var _materials: Dictionary = {}
 
 
@@ -59,7 +68,6 @@ func _ready() -> void:
 	_bomb_mesh.radius = 0.36
 	_bomb_mesh.height = 0.72
 	_flame_mesh.size = Vector3(0.9, 0.5, 0.9)
-	_extra_mesh.size = Vector3(0.5, 0.5, 0.5)
 	_setup_environment()
 
 
@@ -261,7 +269,7 @@ func _make_observer() -> Node3D:
 	label.font_size = 128
 	label.pixel_size = 0.006
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.position = Vector3(0, 0.6, 0)
+	label.position = Vector3(0, 1.0, 0)
 	root.add_child(label)
 	add_child(root)
 	return root
@@ -310,26 +318,55 @@ func _sync_extras() -> void:
 			_extras[cell] = _make_extra(cell, world.extras[cell])
 		var node: Node3D = _extras[cell]
 		node.position.y = 0.45 + 0.08 * sin(_time * 3.0 + cell.x)
-		node.rotation.y = _time * 1.5
+		(node.get_meta("spinner") as Node3D).rotation.y = _time * 1.5
 
 
 func _make_extra(cell: Vector2i, type: int) -> Node3D:
 	var root := Node3D.new()
 	root.set_meta("type", type)
 	root.position = Vector3(cell.x + 0.5, 0.45, cell.y + 0.5)
-	_add_mesh(root, _extra_mesh, _material(EXTRA_COLORS.get(type, Color.WHITE)), Vector3.ZERO)
-	for side in [0.0, PI]:
-		var label := Label3D.new()
-		label.text = EXTRA_LETTERS.get(type, "?")
-		label.font_size = 128
-		label.pixel_size = 0.0045
-		label.modulate = Color.BLACK
-		label.outline_size = 0
-		label.position = Vector3(0, 0, 0.26 if side == 0.0 else -0.26)
-		label.rotation.y = side
-		root.add_child(label)
+	var model: Node3D = load(EXTRA_MODELS.get(type, "res://assets/models/mini-dungeon/potion.glb")).instantiate()
+	var pivot := Node3D.new()
+	pivot.rotation.x = 0.7
+	root.add_child(pivot)
+	var spinner := Node3D.new()
+	pivot.add_child(spinner)
+	spinner.add_child(model)
+	root.set_meta("spinner", spinner)
+	_fit_model(model, 1.0)
+	if type in DISEASES:
+		var tint := _material(EXTRA_COLORS[type])
+		for mi in model.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_override = tint
+	var label := Label3D.new()
+	label.text = EXTRA_LETTERS.get(type, "?")
+	label.font_size = 128
+	label.pixel_size = 0.0032
+	label.modulate = EXTRA_COLORS.get(type, Color.WHITE)
+	label.outline_size = 24
+	label.outline_modulate = Color.BLACK
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = Vector3(0, 1.0, 0)
+	root.add_child(label)
 	add_child(root)
 	return root
+
+
+# Scales the model so its largest dimension is `size` and centers it on the origin.
+func _fit_model(model: Node3D, size: float) -> void:
+	var box := AABB()
+	var first := true
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		var b: AABB = m.global_transform * m.get_aabb() if m.is_inside_tree() else m.transform * m.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	if first or box.get_longest_axis_size() <= 0.0:
+		return
+	var k := size / box.get_longest_axis_size()
+	model.scale = Vector3.ONE * k
+	model.position = -box.get_center() * k
 
 
 func _sync_flames() -> void:
