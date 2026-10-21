@@ -9,6 +9,7 @@ signal extra_destroyed(cell: Vector2i)
 signal bomb_kicked(bomb: SimBomb)
 signal bomb_thrown(bomb: SimBomb)
 signal bomb_landed(bomb: SimBomb)
+signal bomb_trapped(bomb: SimBomb)
 signal extra_collected(player_id: int, type: int)
 signal player_died(player_id: int, killer_id: int)
 
@@ -25,6 +26,8 @@ var extras: Dictionary = {}
 var disabled_extras: Array = []
 
 var _next_bomb_id := 1
+# Pfeilfelder: Zelle -> {chill_ms, bomb_id} (letzte Bombe, um Neuankömmlinge zu erkennen).
+var _arrow_state: Dictionary = {}
 # Vom Strahl getroffene Boxen bleiben bis zum Tick-Ende blockierend; erst dann Drop.
 var _pending_boxes: Dictionary = {}
 
@@ -138,6 +141,7 @@ func _free_fields(origin: Vector2i, dir: Vector2i, max_fields: int) -> int:
 
 func tick(dt_ms: int) -> void:
 	_move_players(dt_ms)
+	_slide_on_ice(dt_ms)
 	_move_bombs(dt_ms)
 	_collect_extras()
 	_update_diseases(dt_ms)
@@ -166,12 +170,36 @@ func _move_players(dt_ms: int) -> void:
 		player.moved = player.pos != before
 
 
+# Eis schiebt jede Figur mit 80 px/s in ihre letzte Blickrichtung weiter.
+func _slide_on_ice(dt_ms: int) -> void:
+	for id in players:
+		var player: SimPlayer = players[id]
+		if not player.alive or board.get_tile(player.cell) != SimTile.Type.ICE:
+			player.ice_remainder_milli = 0
+			continue
+		player.ice_remainder_milli += SimConstants.ICE_SPEED * dt_ms
+		var span := player.ice_remainder_milli / 1000
+		player.ice_remainder_milli -= span * 1000
+		if not SimMovement.advance(self, player, player.facing, span):
+			player.ice_remainder_milli = 0
+
+
 func _move_bombs(dt_ms: int) -> void:
+	_update_arrows(dt_ms)
 	for bomb in bombs:
+		if bomb.trapped or bomb.trap_flight:
+			_update_trap(bomb, dt_ms)
+			continue
+		if not bomb.flying and board.get_tile(bomb.cell) == SimTile.Type.TRAP:
+			_trap_bomb(bomb)
+			continue
 		if bomb.flying:
 			_fly(bomb, dt_ms)
 		elif bomb.move_dir != Vector2i.ZERO:
-			bomb.move_remainder_milli += SimConstants.BOMB_SPEED * dt_ms
+			var speed := SimConstants.BOMB_SPEED
+			if board.get_tile(bomb.cell) == SimTile.Type.ICE:
+				speed += SimConstants.ICE_SPEED
+			bomb.move_remainder_milli += speed * dt_ms
 			var span := bomb.move_remainder_milli / 1000
 			bomb.move_remainder_milli -= span * 1000
 			if not SimMovement.advance_bomb(self, bomb, span):
@@ -379,3 +407,90 @@ func _spawn_extra_on_free_cell(type: int) -> void:
 	var target: Vector2i = free[rng.randi() % free.size()]
 	extras[target] = type
 	extra_spawned.emit(target, type)
+
+
+# Pfeil: Eine ruhende oder passende Bombe wird in Pfeilrichtung geschoben. Eine entgegenkommende Bombe
+# wird eingerastet und nach 0,5 s umgelenkt.
+func _update_arrows(dt_ms: int) -> void:
+	for y in board.height:
+		for x in board.width:
+			var cell := Vector2i(x, y)
+			var dir := SimTile.arrow_direction(board.get_tile(cell))
+			if dir == Vector2i.ZERO:
+				continue
+			var bomb := bomb_at(cell)
+			var state: Dictionary = _arrow_state.get(cell, {"chill_ms": 0, "bomb_id": 0})
+			if bomb == null:
+				_arrow_state.erase(cell)
+				continue
+			var is_new: bool = state.bomb_id != bomb.id
+			if bomb.move_dir != Vector2i.ZERO and bomb.move_dir != dir and bomb.move_dir == -dir and is_new:
+				bomb.snap()
+				bomb.move_dir = Vector2i.ZERO
+				bomb.move_remainder_milli = 0
+				state.chill_ms = SimConstants.ARROW_CHILL_MS
+			if state.chill_ms > 0:
+				state.chill_ms -= dt_ms
+			elif bomb.move_dir != dir:
+				bomb.move_dir = dir
+				bomb.move_remainder_milli = 0
+			state.bomb_id = bomb.id
+			_arrow_state[cell] = state
+
+
+# Fallen halten die Bombe 1 s außerhalb des Spiels, dann fliegt sie über Wände auf ein zufälliges freies Feld.
+func _trap_bomb(bomb: SimBomb) -> void:
+	bomb.snap()
+	bomb.move_dir = Vector2i.ZERO
+	bomb.flying = true
+	bomb.trapped = true
+	bomb.trap_ms = SimConstants.TRAP_HOLD_MS
+	bomb_trapped.emit(bomb)
+
+
+func _update_trap(bomb: SimBomb, dt_ms: int) -> void:
+	if bomb.trapped:
+		bomb.trap_ms -= dt_ms
+		if bomb.trap_ms > 0:
+			return
+		var target := _random_passable_cell()
+		if target == Vector2i(-1, -1):
+			_remove_bomb(bomb)
+			return
+		bomb.trapped = false
+		bomb.trap_flight = true
+		bomb.trap_from = bomb.pos
+		bomb.trap_to = target * int(SimConstants.CELL_SIZE)
+		bomb.trap_elapsed_ms = 0
+		var distance := Vector2(bomb.trap_to - bomb.trap_from).length()
+		bomb.trap_total_ms = maxi(1, int(distance * 1000.0 / SimConstants.TRAP_FLIGHT_SPEED))
+		bomb_thrown.emit(bomb)
+		return
+	bomb.trap_elapsed_ms += dt_ms
+	if bomb.trap_elapsed_ms < bomb.trap_total_ms:
+		var t := float(bomb.trap_elapsed_ms) / bomb.trap_total_ms
+		bomb.pos = Vector2i((Vector2(bomb.trap_from).lerp(Vector2(bomb.trap_to), t)).round())
+		return
+	bomb.pos = bomb.trap_to
+	bomb.trap_flight = false
+	bomb.flying = false
+	bomb.timer_ms = SimConstants.TRAP_FUSE_MS
+	bomb_landed.emit(bomb)
+
+
+func _random_passable_cell() -> Vector2i:
+	var free: Array[Vector2i] = []
+	for y in board.height:
+		for x in board.width:
+			if not board.is_blocking(Vector2i(x, y)):
+				free.append(Vector2i(x, y))
+	if free.is_empty():
+		return Vector2i(-1, -1)
+	return free[rng.randi() % free.size()]
+
+
+func _remove_bomb(bomb: SimBomb) -> void:
+	bombs.erase(bomb)
+	var owner: SimPlayer = players.get(bomb.owner_id)
+	if owner != null:
+		owner.active_bombs -= 1

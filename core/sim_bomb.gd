@@ -23,5 +23,15 @@ var fly_remaining_px := 0
 var fly_remainder_milli := 0
 
 
+# In einer Falle gehalten (flying ist dann ebenfalls true) bzw. im Trap-Flug zu einem Zielpunkt.
+var trapped := false
+var trap_ms := 0
+var trap_flight := false
+var trap_from := Vector2i.ZERO
+var trap_to := Vector2i.ZERO
+var trap_elapsed_ms := 0
+var trap_total_ms := 0
+
+
 func snap() -> void:
 	cell = cell

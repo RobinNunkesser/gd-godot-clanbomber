@@ -19,6 +19,7 @@ var kills := 0
 # Letzte Blickrichtung (bestimmt die Wurfrichtung) und ob die Figur im letzten Tick gelaufen ist.
 var facing := Vector2i.DOWN
 var moved := false
+var ice_remainder_milli := 0
 var can_kick := false
 var can_glove := false
 # Aufgesammelte Extras (ohne Startausrüstung); sie fallen beim Tod wieder aus.

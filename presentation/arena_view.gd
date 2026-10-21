@@ -38,6 +38,8 @@ func _draw() -> void:
 			draw_circle(center, 12.0, c)
 		_draw_letter(center, EXTRA_LETTERS.get(type, "?"))
 	for bomb in world.bombs:
+		if bomb.trapped:
+			continue
 		var pulse := 1.0 + 0.1 * sin(bomb.timer_ms * 0.02)
 		var center := Vector2(bomb.pos) + Vector2(CELL, CELL) / 2.0
 		if bomb.flying:

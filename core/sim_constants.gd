@@ -24,3 +24,9 @@ const OVERDRIVE_SPEED_BONUS := 600 # px/s
 
 const BOMB_SPEED := 160 # px/s für Kick und Wurf
 const THROW_FIELDS := 4
+
+const ICE_SPEED := 80 # px/s, zusätzliches Rutschen
+const ARROW_CHILL_MS := 500
+const TRAP_HOLD_MS := 1000
+const TRAP_FLIGHT_SPEED := 200 # px/s
+const TRAP_FUSE_MS := 10
