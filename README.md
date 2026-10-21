@@ -30,6 +30,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | WASD, Leertaste | Spieler 1 bewegen, Bombe legen |
 | Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
 | N / P / R | nächste / vorherige Karte / Neustart |
+| F2 | Ansicht umschalten: 3D (Kenney-Modelle, Standard) / 2D (Platzhalter) |
 | F1 | Testhilfe: alle 8 Extras neben Spieler 1 ablegen |
 
 Kick: gegen eine Bombe laufen. Glove: stillstehend auf der eigenen Bombe die Bomben-Taste drücken, geworfen wird in Blickrichtung.

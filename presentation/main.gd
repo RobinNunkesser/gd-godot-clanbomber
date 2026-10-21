@@ -5,6 +5,9 @@ extends Node2D
 const MAP_DIR := "res://maps"
 
 @onready var view: ArenaView = $ArenaView
+@onready var view3d: ArenaView3D = $ArenaView3D
+@onready var sfx: Sfx = $Sfx
+@onready var hud: Label = $UI/Hud
 @onready var banner: Label = $UI/Banner
 
 var _maps: Array[String] = []
@@ -36,8 +39,9 @@ func _load_map() -> void:
 	for slot in mini(2, data.starts.size()):
 		if data.starts.has(slot):
 			_world.add_player(slot + 1, data.starts[slot])
-	_world.player_died.connect(_on_player_died)
+	_connect_sounds()
 	view.world = _world
+	view3d.bind(_world)
 	_round_over = false
 	banner.text = "%s  (von %s)" % [_maps[_map_index].get_basename(), data.author]
 	view.queue_redraw()
@@ -54,6 +58,7 @@ func _physics_process(delta: float) -> void:
 	_world.tick(whole)
 	_check_round_end()
 	view.queue_redraw()
+	hud.text = _status_text()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -73,6 +78,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_load_map()
 		KEY_R:
 			_load_map()
+		KEY_F2:
+			_toggle_view()
 		KEY_F1:
 			_debug_spawn_extras()
 
@@ -85,6 +92,42 @@ func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
 
 func _on_player_died(player_id: int, _killer_id: int) -> void:
 	banner.text = "Spieler %d ist tot" % player_id
+	sfx.play("death")
+
+
+func _connect_sounds() -> void:
+	_world.player_died.connect(_on_player_died)
+	_world.bomb_placed.connect(func(_b: SimBomb) -> void: sfx.play("bomb_place", -4.0))
+	_world.bomb_exploded.connect(func(_b: SimBomb, _e: SimExplosion) -> void: sfx.play("explosion"))
+	_world.box_destroyed.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -6.0))
+	_world.extra_collected.connect(func(_id: int, type: int) -> void:
+		sfx.play("disease" if type in ArenaView3D.DISEASES else "extra_pickup"))
+	_world.bomb_kicked.connect(func(_b: SimBomb) -> void: sfx.play("kick"))
+	_world.bomb_thrown.connect(func(_b: SimBomb) -> void: sfx.play("throw"))
+	_world.bomb_landed.connect(func(_b: SimBomb) -> void: sfx.play("land"))
+	_world.bomb_trapped.connect(func(_b: SimBomb) -> void: sfx.play("trap"))
+
+
+func _toggle_view() -> void:
+	var use_3d := not view3d.visible
+	view3d.visible = use_3d
+	view.visible = not use_3d
+	view3d.set_process(use_3d)
+	sfx.play("ui_select")
+
+
+# Kurzstatus je Spieler: Bomben, Power, Skateboards, Kick/Glove, Krankheit.
+func _status_text() -> String:
+	var lines: Array[String] = []
+	for id: int in _world.players:
+		var p: SimPlayer = _world.players[id]
+		var line := "P%d  B%d P%d S%d%s%s" % [id, p.max_bombs, p.power, p.skateboards, " K" if p.can_kick else "", " G" if p.can_glove else ""]
+		if p.is_diseased():
+			line += " [%s %ds]" % [ArenaView3D.EXTRA_LETTERS[p.disease], ceili(p.disease_ms / 1000.0)]
+		if not p.alive:
+			line += "  tot"
+		lines.append(line)
+	return "    ".join(lines)
 
 
 func _check_round_end() -> void:
@@ -96,6 +139,7 @@ func _check_round_end() -> void:
 			alive.append(id)
 	if alive.size() <= 1:
 		_round_over = true
+		sfx.play("round_end")
 		banner.text = "Runde vorbei: %s  (R = Neustart, N = nächste Karte)" % (
 			"Spieler %d gewinnt" % alive[0] if alive.size() == 1 else "Unentschieden")
 

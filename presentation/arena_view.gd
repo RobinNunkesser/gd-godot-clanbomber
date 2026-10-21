@@ -24,6 +24,11 @@ const DISEASES: Array[int] = [SimExtra.Type.OVERDRIVE, SimExtra.Type.REVERSE, Si
 var world: SimWorld
 
 
+func _ready() -> void:
+	position = Vector2(172, 40)
+	visible = false
+
+
 func _draw() -> void:
 	if world == null:
 		return
@@ -61,7 +66,6 @@ func _draw() -> void:
 		if player.is_diseased():
 			draw_rect(rect.grow(3), EXTRA_COLORS[player.disease], false, 3.0)
 			_draw_letter(rect.get_center(), EXTRA_LETTERS[player.disease], Color.WHITE)
-	_draw_status()
 
 
 func _draw_board() -> void:
@@ -109,18 +113,3 @@ func _draw_letter(center: Vector2, letter: String, color := Color.BLACK) -> void
 	var font := ThemeDB.fallback_font
 	var size := Vector2(font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 16))
 	draw_string(font, center + Vector2(-size.x / 2.0, 6.0), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, color)
-
-
-# Kurzstatus je Spieler unter der Arena: Bomben, Power, Skateboards, Kick/Glove, Krankheit.
-func _draw_status() -> void:
-	var font := ThemeDB.fallback_font
-	var y := world.board.height * CELL + 52.0
-	for id: int in world.players:
-		var p: SimPlayer = world.players[id]
-		var text := "P%d  B%d P%d S%d%s%s%s" % [
-			id, p.max_bombs, p.power, p.skateboards,
-			" K" if p.can_kick else "", " G" if p.can_glove else "",
-			(" [%s %ds]" % [EXTRA_LETTERS[p.disease], ceili(p.disease_ms / 1000.0)]) if p.is_diseased() else ""]
-		if not p.alive:
-			text += "  tot"
-		draw_string(font, Vector2(8 + (id - 1) * 330, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()].darkened(0.3))
