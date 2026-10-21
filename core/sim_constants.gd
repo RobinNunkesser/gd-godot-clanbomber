@@ -10,6 +10,10 @@ const BOMB_COUNTDOWN_MS := 2500
 const BOMB_CHAIN_DELAY_MS := 100
 const EXPLOSION_DURATION_MS := 500
 
+const BASE_PLAYER_SPEED := 90 # px/s
+const SKATEBOARD_SPEED_BONUS := 40 # px/s pro Skateboard
+const MAX_SKATEBOARDS := 5
+
 const START_BOMBS := 1
 const MAX_BOMBS := 9
 const START_POWER := 1

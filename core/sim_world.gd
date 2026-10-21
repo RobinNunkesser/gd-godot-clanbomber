@@ -41,6 +41,25 @@ func add_player(id: int, cell: Vector2i) -> SimPlayer:
 	return player
 
 
+# Setzt die gewünschte Bewegungsrichtung. Diagonale Eingaben werden auf die horizontale Achse reduziert.
+func set_move_dir(player_id: int, dir: Vector2i) -> void:
+	var player: SimPlayer = players.get(player_id)
+	if player == null:
+		return
+	var clean := Vector2i(signi(dir.x), 0) if dir.x != 0 else Vector2i(0, signi(dir.y))
+	if clean != player.move_dir:
+		player.move_remainder_milli = 0
+	player.move_dir = clean
+
+
+func is_other_player_in(cell: Vector2i, except_id: int) -> bool:
+	for id in players:
+		var other: SimPlayer = players[id]
+		if id != except_id and other.alive and other.cell == cell:
+			return true
+	return false
+
+
 func bomb_at(cell: Vector2i) -> SimBomb:
 	for bomb in bombs:
 		if bomb.cell == cell:
@@ -67,12 +86,25 @@ func place_bomb(player_id: int) -> SimBomb:
 
 
 func tick(dt_ms: int) -> void:
+	_move_players(dt_ms)
 	_age_explosions(dt_ms)
 	for bomb in bombs:
 		bomb.timer_ms -= dt_ms
 	_detonate_due_bombs()
 	_resolve_pending_boxes()
 	_apply_explosion_damage()
+
+
+func _move_players(dt_ms: int) -> void:
+	for id in players:
+		var player: SimPlayer = players[id]
+		if not player.alive or player.move_dir == Vector2i.ZERO:
+			continue
+		player.move_remainder_milli += player.speed() * dt_ms
+		var span := player.move_remainder_milli / 1000
+		player.move_remainder_milli -= span * 1000
+		if not SimMovement.advance(self, player, player.move_dir, span):
+			player.move_remainder_milli = 0
 
 
 func _age_explosions(dt_ms: int) -> void:

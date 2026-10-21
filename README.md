@@ -4,7 +4,7 @@ Moderne Godot-4-Neuauflage von *ClanBomber* (2.5D-Präsentation, 2D-Simulationsk
 
 Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot/` mit `GDD.md` (normativ) und `docs/reference/ORIGINAL_BEHAVIOR.md` (Verhalten des Originals, Clean-Room-Referenz).
 
-## Stand: Slice 1 (Simulationskern)
+## Stand: Slice 2 (Simulationskern mit Bewegung)
 
 Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahligen Millisekunden für bitgenaue Reproduzierbarkeit:
 
@@ -13,9 +13,10 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `map_parser.gd`, `map_data.gd` | Importer für das Original-Kartenformat (17×13, `R`-Zufall seedbar, `-` = `NONE`) |
 | `sim_board.gd`, `sim_tile.gd` | Raster und Kacheltypen |
 | `sim_world.gd` | Bomben, Kettenreaktion (0,1 s), Strahlberechnung bei Zündung, Explosion 0,5 s, Tod/Kill-Zählung, Box-Drops |
+| `sim_movement.gd`, `sim_player.gd` | Pixelbewegung (90 px/s + 40 je Skateboard), Blockaderegeln für Bomben und Spieler, Corner-Sliding |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: kontinuierliche Bewegung mit Corner-Sliding, Kick/Glove, Ice/Arrow/Trap-Verhalten, Sudden Death, Handicaps, AI, Präsentation.
+Noch nicht enthalten: Extra-Aufnahme, Kick/Glove, Ice/Arrow/Trap-Verhalten, Sudden Death, Handicaps, AI, Präsentation.
 
 ## Tests
 
