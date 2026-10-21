@@ -34,7 +34,7 @@ Hinweise:
 
 ## Fertig
 
-Simulationskern (122 Tests grün):
+Simulationskern (129 Tests grün):
 
 | Slice | Inhalt |
 |---|---|
@@ -45,7 +45,8 @@ Simulationskern (122 Tests grün):
 | 5 | Ice, Arrow, Trap |
 | 6 | Sudden Death (Observer, Löcher, Sturz), Testsuite `sim_sudden_death_test.gd`, 98 Tests grün |
 | 7 | Rundenverwaltung (`SimMatch`: Punkte, Kills, Matchsieg bei 5 Punkten), Scoreboard-Overlay, Kartenwechsel nach jeder Runde, 111 Tests grün |
-| 8 | Einfache AI (`SimAI`, Spieler 2 im Prototyp, F4 schaltet um), 122 Tests grün |
+| 8 | Einfache AI (`SimAI`, im Menü je Platz wählbar), 122 Tests grün |
+| 9 | Startmenü (`GameMenu`, `GameConfig`): 2-4 Spieler mit Tastatur 1/2, Gamepad 1-4 oder AI, Karte oder Zufall, Punkte zum Sieg; 129 Tests grün. Gamepad-Eingabe nicht mit echter Hardware getestet |
 
 Präsentation:
 - 2D-Platzhalteransicht (`presentation/arena_view.gd`) und 3D-Ansicht (`presentation/arena_view_3d.gd`), Umschalten mit F2. Standard ist 3D.
@@ -91,7 +92,7 @@ Präsentation:
 3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, der Prototyp hat nur Eingaben für 2).
 4. ~~AI~~ (einfache Heuristik erledigt, Slice 8). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden viele Runden passiv erst im Sudden Death. Verbesserung: aktiver auf den Gegner zulaufen, Schwierigkeitsgrade.
 5. **Karten-UI:** Karten mit zu wenigen Startfeldern ausblenden, Anzeigenamen getrennt vom Dateinamen.
-6. **Menü und Eingabe:** Gamepad, Tastenbelegung, Spielerzahl.
+6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad). Offen: Tastenbelegung ändern, Gamepad mit echter Hardware testen, mehr als 4 Spieler.
 7. **Optik:** eigene Modelle oder Kenney-Varianten für Extras und Flammen, Partikel, Musik.
 8. **Kids-Mode** (Cube Pets).
 

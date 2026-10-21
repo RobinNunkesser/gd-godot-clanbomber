@@ -22,9 +22,10 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_match.gd` | Rundenverwaltung: Rundenende (höchstens 1 Überlebender, keine Explosion, niemand fällt), +1 Punkt je Überlebendem, Kills, Ranking, Matchsieg bei 5 Punkten; beliebige Spielerzahl |
 | `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Nach 90 s fliegt der Observer (500 px/s) zu zufälligen Feldern (erster Flug nur Ansage). Boden wird 1 s kleiner, dann Loch; Mauer wird Boden, Box zerbricht mit Drop; Extras weichen aus. Figuren auf einem Loch stürzen 1 s und sterben (ohne Killer), Bomben verschwinden ohne Detonation |
 | `sim_ai.gd` | Einfache Heuristik-AI (deterministisch): flieht aus Gefahrenzonen (zeitlich bewertet, inkl. Kettenreaktionen), legt Bomben nur mit Fluchtweg, sprengt Boxen, jagt Gegner, sammelt gute Extras. Ignoriert Kick, Glove, Ice, Arrow, Trap und Krankheits-Extras; wartet oft passiv, daher enden manche Runden erst im Sudden Death |
+| `game_config.gd` | Matcheinstellungen: 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI), Karte oder Zufall, Punkte zum Sieg (1-10) |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: Menü, Musik.
+Noch nicht enthalten: Musik, Tastenbelegung ändern, mehr als 4 Spieler im Menü.
 
 ## Spielbarer Prototyp (2D-Platzhalter)
 
@@ -32,9 +33,11 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 
 | Taste | Aktion |
 |---|---|
-| WASD, Leertaste | Spieler 1 bewegen, Bombe legen |
-| Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen (nur wenn die AI aus ist) |
-| F4 | Spieler 2: AI (Standard) / Mensch |
+| Menü: ↑↓ ←→, Enter / Leertaste / Gamepad A | Steuerung je Platz, Karte (oder Zufall), Punkte wählen und starten |
+| Esc / Gamepad Start | Menü erneut öffnen (startet ein neues Match) |
+| Tastatur 1: WASD, Leertaste | bewegen, Bombe legen |
+| Tastatur 2: Pfeiltasten, Enter | bewegen, Bombe legen |
+| Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-4 im Menü zuordnen) |
 | N / P / R | nächste / vorherige Karte / Neustart |
 | F2 | Ansicht umschalten: 3D (Kenney-Modelle, Standard) / 2D (Platzhalter) |
 | F5 | Neues Match (Punkte zurücksetzen) |

@@ -1,10 +1,11 @@
 extends Node2D
 ## Spielbarer Prototyp: lädt eine Karte, speist die Simulation und liest Eingaben.
-## Spieler 1: WASD + Leertaste, Spieler 2: Pfeiltasten + Enter oder AI (F4 schaltet um).
+## Startmenü (Esc öffnet es erneut): Steuerung je Platz (Tastatur 1/2, Gamepad 1-4, AI), Karte, Punkte.
+## Tastatur 1: WASD + Leertaste, Tastatur 2: Pfeiltasten + Enter, Gamepad: D-Pad/linker Stick + A.
 ## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match.
 
 const MAP_DIR := "res://maps"
-const PLAYER_COUNT := 2
+const PAD_DEADZONE := 0.5
 const CONTINUE_LOCK_MS := 800
 
 @onready var view: ArenaView = $ArenaView
@@ -21,8 +22,8 @@ var _match := SimMatch.new()
 var _scoreboard := Scoreboard.new()
 var _round_over := false
 var _continue_unlock_at := 0
-var _ai_enabled := true
-var _ai := SimAI.new(2)
+var _menu := GameMenu.new()
+var _ais: Dictionary = {}
 
 
 func _ready() -> void:
@@ -33,7 +34,10 @@ func _ready() -> void:
 	var start := _maps.find("crossroads.map")
 	_map_index = maxi(start, 0)
 	$UI.add_child(_scoreboard)
-	_load_map(0)
+	$UI.add_child(_menu)
+	_menu.maps = _maps
+	_menu.start_requested.connect(_start_match)
+	_menu.open()
 
 
 # Lädt die Karte `step` Positionen weiter und überspringt Karten, die für die Spielerzahl nicht taugen.
@@ -42,6 +46,9 @@ func _load_map(step: int) -> void:
 		_match.reset()
 	_match.start_next_round()
 	_scoreboard.visible = false
+	if _menu.config.is_random_map() and step != 0:
+		_map_index = randi() % _maps.size()
+		step = 0
 	for attempt in _maps.size():
 		_map_index = posmod(_map_index + step, _maps.size())
 		if _try_load_current_map():
@@ -57,14 +64,19 @@ func _try_load_current_map() -> bool:
 	var data := MapParser.parse(text, rng)
 	if not data.is_valid():
 		return false
-	for slot in PLAYER_COUNT:
+	var active := _menu.config.active_slots()
+	for slot in active:
 		if not data.starts.has(slot):
 			return false
 	_world = SimWorld.new(SimBoard.from_map(data), rng)
-	_ai = SimAI.new(2)
-	for slot in PLAYER_COUNT:
+	_ais.clear()
+	for slot in active:
 		_world.add_player(slot + 1, data.starts[slot])
+		if _menu.config.slots[slot] == GameConfig.Controller.AI:
+			_ais[slot + 1] = SimAI.new(slot + 1)
 	_match.register_players(_world.players.keys())
+	if not _menu.config.is_random_map():
+		_menu.config.map_name = _maps[_map_index]
 	_connect_sounds()
 	view.world = _world
 	view3d.bind(_world)
@@ -75,16 +87,14 @@ func _try_load_current_map() -> bool:
 
 
 func _physics_process(delta: float) -> void:
-	if _world == null or _scoreboard.visible:
+	if _world == null or _scoreboard.visible or _menu.visible:
 		return
-	_world.set_move_dir(1, _axis(KEY_A, KEY_D, KEY_W, KEY_S))
+	_apply_human_input()
 	_clock_ms += delta * 1000.0
 	var whole := int(_clock_ms)
 	_clock_ms -= whole
-	if _ai_enabled:
-		_ai.update(_world, whole)
-	else:
-		_world.set_move_dir(2, _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN))
+	for ai: SimAI in _ais.values():
+		ai.update(_world, whole)
 	_world.tick(whole)
 	_check_round_end()
 	view.queue_redraw()
@@ -93,20 +103,18 @@ func _physics_process(delta: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo or _world == null:
+	if key == null or not key.pressed or key.echo or _world == null or _menu.visible:
 		return
 	if _scoreboard.visible:
 		_handle_scoreboard_key(key.keycode)
 		return
 	match key.keycode:
 		KEY_SPACE:
-			_world.action_bomb(1)
+			_bomb_for_controller(GameConfig.Controller.KEYBOARD_1)
 		KEY_ENTER, KEY_KP_ENTER:
-			if not _ai_enabled:
-				_world.action_bomb(2)
-		KEY_F4:
-			_ai_enabled = not _ai_enabled
-			banner.text = "Spieler 2: %s" % ("AI" if _ai_enabled else "Mensch")
+			_bomb_for_controller(GameConfig.Controller.KEYBOARD_2)
+		KEY_ESCAPE:
+			_menu.open()
 		KEY_N:
 			_load_map(1)
 		KEY_P:
@@ -128,11 +136,75 @@ func _handle_scoreboard_key(keycode: Key) -> void:
 	if Time.get_ticks_msec() < _continue_unlock_at:
 		return
 	if keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
-		sfx.play("ui_select")
-		_load_map(1)
+		_continue_after_scoreboard()
 	elif keycode == KEY_F5:
 		_match.reset()
 		_load_map(0)
+
+
+func _continue_after_scoreboard() -> void:
+	sfx.play("ui_select")
+	_load_map(1 if _menu.config.is_random_map() else 0)
+
+
+# Neues Match mit den Menüeinstellungen. Eine feste Karte bleibt über alle Runden gleich.
+func _start_match() -> void:
+	var config := _menu.config
+	_match = SimMatch.new(config.points_to_win)
+	if not config.is_random_map():
+		_map_index = maxi(_maps.find(config.map_name), 0)
+	_load_map(1 if config.is_random_map() else 0)
+	sfx.play("ui_select")
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var button := event as InputEventJoypadButton
+	if button == null or not button.pressed or _world == null or _menu.visible:
+		return
+	if _scoreboard.visible:
+		if button.button_index == JOY_BUTTON_A and Time.get_ticks_msec() >= _continue_unlock_at:
+			_continue_after_scoreboard()
+		return
+	if button.button_index == JOY_BUTTON_A:
+		_bomb_for_controller(GameConfig.Controller.PAD_1 + button.device)
+	elif button.button_index == JOY_BUTTON_START:
+		_menu.open()
+
+
+func _bomb_for_controller(controller: int) -> void:
+	var slot := _menu.config.slots.find(controller)
+	if slot >= 0:
+		_world.action_bomb(slot + 1)
+
+
+func _apply_human_input() -> void:
+	var config := _menu.config
+	for slot in GameConfig.SLOT_COUNT:
+		var direction := Vector2i.ZERO
+		match config.slots[slot]:
+			GameConfig.Controller.KEYBOARD_1:
+				direction = _axis(KEY_A, KEY_D, KEY_W, KEY_S)
+			GameConfig.Controller.KEYBOARD_2:
+				direction = _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN)
+			GameConfig.Controller.PAD_1, GameConfig.Controller.PAD_2, GameConfig.Controller.PAD_3, GameConfig.Controller.PAD_4:
+				direction = _pad_axis(config.pad_device(slot))
+			_:
+				continue
+		_world.set_move_dir(slot + 1, direction)
+
+
+# D-Pad hat Vorrang vor dem linken Stick; der Stick läuft nur auf einer Achse (4 Richtungen, wie die Simulation).
+func _pad_axis(device: int) -> Vector2i:
+	var x := int(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_RIGHT)) - int(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT))
+	var y := int(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_DOWN)) - int(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_UP))
+	if x != 0 or y != 0:
+		return Vector2i(x, y)
+	var stick := Vector2(Input.get_joy_axis(device, JOY_AXIS_LEFT_X), Input.get_joy_axis(device, JOY_AXIS_LEFT_Y))
+	if stick.length() < PAD_DEADZONE:
+		return Vector2i.ZERO
+	if absf(stick.x) > absf(stick.y):
+		return Vector2i(int(signf(stick.x)), 0)
+	return Vector2i(0, int(signf(stick.y)))
 
 
 func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
