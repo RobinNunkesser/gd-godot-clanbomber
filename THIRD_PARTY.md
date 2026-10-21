@@ -1,6 +1,6 @@
 # Third-Party-Hinweise
 
-Dieses Repo (Code und eigene Karten) steht unter der MIT-Lizenz (`LICENSE`).
+Dieses Repo (Code und eigene Karten, einschließlich der Karten der Aliase *Robin Nunkesser*, *anonymous hendrik*, *anonymous hendrik*, *cjl*, die laut Eigentümer von ihm stammen) steht unter der MIT-Lizenz (`LICENSE`).
 
 | Komponente | Lizenz | Hinweis |
 |---|---|---|
