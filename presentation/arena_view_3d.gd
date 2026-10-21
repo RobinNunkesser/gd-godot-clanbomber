@@ -35,6 +35,9 @@ var world: SimWorld
 
 var _static_root: Node3D
 var _boxes: Dictionary = {}
+var _walls: Dictionary = {}
+var _tile_roots: Dictionary = {}
+var _observer: Node3D
 var _bombs: Dictionary = {}
 var _extras: Dictionary = {}
 var _flames: Dictionary = {}
@@ -88,7 +91,10 @@ func bind(p_world: SimWorld) -> void:
 	for node in [_static_root]:
 		if node != null:
 			node.queue_free()
-	for dict: Dictionary in [_boxes, _bombs, _extras, _flames, _players]:
+	if _observer != null:
+		_observer.queue_free()
+		_observer = null
+	for dict: Dictionary in [_boxes, _walls, _tile_roots, _bombs, _extras, _flames, _players]:
 		for node: Node in dict.values():
 			node.queue_free()
 		dict.clear()
@@ -105,45 +111,77 @@ func _build_board() -> void:
 		for x in world.board.width:
 			var cell := Vector2i(x, y)
 			var tile := world.board.get_tile(cell)
-			if tile == SimTile.Type.NONE:
-				continue
-			var center := Vector3(x + 0.5, 0, y + 0.5)
 			if tile == SimTile.Type.WALL:
-				var wall: Node3D = WALL_SCENE.instantiate()
-				wall.scale = Vector3(0.92, 0.6, 0.92)
-				wall.position = center
-				_static_root.add_child(wall)
-				continue
-			var floor_node: Node3D = FLOOR_SCENE.instantiate()
-			floor_node.scale = Vector3.ONE * 0.25
-			floor_node.position = center
-			_static_root.add_child(floor_node)
-			match tile:
-				SimTile.Type.BOX:
-					var crate: Node3D = BOX_SCENE.instantiate()
-					crate.scale = Vector3.ONE * 1.7
-					crate.position = center
-					add_child(crate)
-					_boxes[cell] = crate
-				SimTile.Type.ICE:
-					var ice := _add_plane(_material(Color(0.6, 0.85, 1.0, 0.55), true), center + Vector3(0, 0.02, 0))
-					_static_root.add_child(ice)
-				SimTile.Type.TRAP:
-					var disc := MeshInstance3D.new()
-					var cylinder := CylinderMesh.new()
-					cylinder.top_radius = 0.34
-					cylinder.bottom_radius = 0.34
-					cylinder.height = 0.03
-					disc.mesh = cylinder
-					disc.material_override = _material(Color("2b1d17"))
-					disc.position = center + Vector3(0, 0.02, 0)
-					_static_root.add_child(disc)
-				_:
-					if ARROW_GLYPHS.has(tile):
-						_add_floor_glyph(center, ARROW_GLYPHS[tile], tile)
+				_make_wall(cell)
+			elif tile != SimTile.Type.NONE:
+				_make_tile_root(cell, tile)
 
 
-func _add_floor_glyph(center: Vector3, glyph: String, tile: int) -> void:
+func _make_wall(cell: Vector2i) -> void:
+	var wall: Node3D = WALL_SCENE.instantiate()
+	wall.scale = Vector3(0.92, 0.6, 0.92)
+	wall.position = Vector3(cell.x + 0.5, 0, cell.y + 0.5)
+	_static_root.add_child(wall)
+	_walls[cell] = wall
+
+
+# Boden samt Markierung (Eis, Falle, Pfeil) in einem Knoten, damit er beim Verschwinden als Ganzes schrumpft.
+func _make_tile_root(cell: Vector2i, tile: int) -> void:
+	var root := Node3D.new()
+	root.position = Vector3(cell.x + 0.5, 0, cell.y + 0.5)
+	_static_root.add_child(root)
+	_tile_roots[cell] = root
+	var floor_node: Node3D = FLOOR_SCENE.instantiate()
+	floor_node.scale = Vector3.ONE * 0.25
+	root.add_child(floor_node)
+	match tile:
+		SimTile.Type.BOX:
+			var crate: Node3D = BOX_SCENE.instantiate()
+			crate.scale = Vector3.ONE * 1.7
+			crate.position = root.position
+			add_child(crate)
+			_boxes[cell] = crate
+		SimTile.Type.ICE:
+			root.add_child(_add_plane(_material(Color(0.6, 0.85, 1.0, 0.55), true), Vector3(0, 0.02, 0)))
+		SimTile.Type.TRAP:
+			var disc := MeshInstance3D.new()
+			var cylinder := CylinderMesh.new()
+			cylinder.top_radius = 0.34
+			cylinder.bottom_radius = 0.34
+			cylinder.height = 0.03
+			disc.mesh = cylinder
+			disc.material_override = _material(Color("2b1d17"))
+			disc.position = Vector3(0, 0.02, 0)
+			root.add_child(disc)
+		_:
+			if ARROW_GLYPHS.has(tile):
+				_add_floor_glyph(root, ARROW_GLYPHS[tile])
+
+
+# Mauern verschwinden, neuer Boden entsteht, verschwindende Felder schrumpfen, Löcher sind leer.
+func _sync_tiles() -> void:
+	for cell: Vector2i in _walls.keys():
+		if world.board.get_tile(cell) != SimTile.Type.WALL:
+			_walls[cell].queue_free()
+			_walls.erase(cell)
+	for y in world.board.height:
+		for x in world.board.width:
+			var cell := Vector2i(x, y)
+			var tile := world.board.get_tile(cell)
+			if tile != SimTile.Type.WALL and tile != SimTile.Type.NONE and tile != SimTile.Type.VANISHING and not _tile_roots.has(cell):
+				_make_tile_root(cell, tile)
+	for cell: Vector2i in _tile_roots.keys():
+		var root: Node3D = _tile_roots[cell]
+		var tile := world.board.get_tile(cell)
+		if tile == SimTile.Type.NONE:
+			root.queue_free()
+			_tile_roots.erase(cell)
+		elif tile == SimTile.Type.VANISHING:
+			var ratio := clampf(float(world.vanishing.get(cell, 0)) / SimConstants.VANISH_MS, 0.0, 1.0)
+			root.scale = Vector3(ratio, 1.0, ratio)
+
+
+func _add_floor_glyph(parent: Node3D, glyph: String) -> void:
 	var label := Label3D.new()
 	label.text = glyph
 	label.font_size = 160
@@ -151,8 +189,8 @@ func _add_floor_glyph(center: Vector3, glyph: String, tile: int) -> void:
 	label.modulate = Color("5d4037")
 	label.outline_size = 0
 	label.rotation_degrees = Vector3(-90, 0, 0)
-	label.position = center + Vector3(0, 0.03, 0)
-	_static_root.add_child(label)
+	label.position = Vector3(0, 0.03, 0)
+	parent.add_child(label)
 
 
 func _make_player(id: int) -> Node3D:
@@ -193,11 +231,39 @@ func _process(delta: float) -> void:
 	if world == null:
 		return
 	_time += delta
+	_sync_tiles()
 	_sync_boxes()
+	_sync_observer()
 	_sync_bombs()
 	_sync_extras()
 	_sync_flames()
 	_sync_players()
+
+
+func _sync_observer() -> void:
+	if _observer == null:
+		_observer = _make_observer()
+	_observer.visible = world.is_sudden_death()
+	if not _observer.visible:
+		return
+	var pos := world.observer.position_px() / CELL
+	_observer.position = Vector3(pos.x + 0.5, 1.4 + 0.15 * sin(_time * 4.0), pos.y + 0.5)
+	_observer.rotation.y = _time * 2.0
+
+
+func _make_observer() -> Node3D:
+	var root := Node3D.new()
+	var mesh := _add_mesh(root, _bomb_mesh, _flame_material(), Vector3.ZERO)
+	mesh.scale = Vector3.ONE * 0.8
+	var label := Label3D.new()
+	label.text = "!"
+	label.font_size = 128
+	label.pixel_size = 0.006
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.position = Vector3(0, 0.6, 0)
+	root.add_child(label)
+	add_child(root)
+	return root
 
 
 func _sync_boxes() -> void:
@@ -286,6 +352,8 @@ func _sync_players() -> void:
 		var player: SimPlayer = world.players[id]
 		var node: Node3D = _players[id]
 		node.position = _world_pos(Vector2(player.pos))
+		if player.is_falling():
+			node.position.y = -1.5 * (1.0 - clampf(float(player.fall_ms) / SimConstants.FALL_MS, 0.0, 1.0))
 		var face := Vector2(player.facing)
 		node.get_node("Model").rotation.y = atan2(face.x, face.y)
 		var anims := _animation_player(node)

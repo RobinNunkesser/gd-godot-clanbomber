@@ -6,7 +6,7 @@ Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot
 
 Aktueller Stand und nächste Schritte: [STATUS.md](STATUS.md).
 
-## Stand: Slice 5 (Ice, Arrow, Trap)
+## Stand: Slice 6 (Sudden Death)
 
 Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahligen Millisekunden für bitgenaue Reproduzierbarkeit:
 
@@ -19,9 +19,10 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` (Extras) | Aufnahme per Betreten, Obergrenzen, Heilen durch jede Aufnahme (Krankheits-Extra taucht neu auf), Overdrive/Reverse/Autobomb (10 s), Ansteckung, Extras fallen beim Tod |
 | `sim_bomb.gd`, `sim_movement.gd` | Kick (Bombe rollt mit 160 px/s bis zum Hindernis und schnappt ein), Wurf mit Glove (4 Zellen, Zünder steht während des Flugs, Wände und Boxen halten an, auf besetzter Landezelle eine Zelle weiter) |
 | `sim_world.gd` (Kacheln) | Ice: Figuren rutschen mit 80 px/s in Blickrichtung weiter, gerollte Bomben werden schneller. Arrow: schiebt Bomben in Pfeilrichtung, entgegenkommende Bomben werden 0,5 s gehalten und umgelenkt. Trap: hält Bomben 1 s, dann Flug (200 px/s, über Wände) auf ein zufälliges freies Feld, dort Zünder 10 ms |
+| `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Nach 90 s fliegt der Observer (500 px/s) zu zufälligen Feldern (erster Flug nur Ansage). Boden wird 1 s kleiner, dann Loch; Mauer wird Boden, Box zerbricht mit Drop; Extras weichen aus. Figuren auf einem Loch stürzen 1 s und sterben (ohne Killer), Bomben verschwinden ohne Detonation |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: Sudden Death, AI, Rundenverwaltung, Musik.
+Noch nicht enthalten: AI, Rundenverwaltung, Musik.
 
 ## Spielbarer Prototyp (2D-Platzhalter)
 
@@ -33,6 +34,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
 | N / P / R | nächste / vorherige Karte / Neustart |
 | F2 | Ansicht umschalten: 3D (Kenney-Modelle, Standard) / 2D (Platzhalter) |
+| F3 | Testhilfe: Sudden Death in 2 s starten |
 | F1 | Testhilfe: alle 8 Extras neben Spieler 1 ablegen |
 
 Kick: gegen eine Bombe laufen. Glove: stillstehend auf der eigenen Bombe die Bomben-Taste drücken, geworfen wird in Blickrichtung.

@@ -12,6 +12,9 @@ signal bomb_landed(bomb: SimBomb)
 signal bomb_trapped(bomb: SimBomb)
 signal extra_collected(player_id: int, type: int)
 signal player_died(player_id: int, killer_id: int)
+signal sudden_death_started
+signal tile_vanishing(cell: Vector2i)
+signal tile_vanished(cell: Vector2i)
 
 const DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 
@@ -24,6 +27,12 @@ var explosions: Array[SimExplosion] = []
 var extras: Dictionary = {}
 # Extra-Typen, die nicht aus Boxen fallen (z. B. Kick/Glove als Startausrüstung).
 var disabled_extras: Array = []
+
+# Verbleibende Rundenzeit; unter 0 beginnt der Sudden Death.
+var round_time_ms := SimConstants.ROUND_TIME_MS
+var observer := SimObserver.new()
+# Zelle -> Restzeit in ms, bis ein verschwindendes Feld zum Loch wird.
+var vanishing: Dictionary = {}
 
 var _next_bomb_id := 1
 # Pfeilfelder: Zelle -> {chill_ms, bomb_id} (letzte Bombe, um Neuankömmlinge zu erkennen).
@@ -140,6 +149,7 @@ func _free_fields(origin: Vector2i, dir: Vector2i, max_fields: int) -> int:
 
 
 func tick(dt_ms: int) -> void:
+	_update_sudden_death(dt_ms)
 	_move_players(dt_ms)
 	_slide_on_ice(dt_ms)
 	_move_bombs(dt_ms)
@@ -157,7 +167,7 @@ func tick(dt_ms: int) -> void:
 func _move_players(dt_ms: int) -> void:
 	for id in players:
 		var player: SimPlayer = players[id]
-		if not player.alive or player.move_dir == Vector2i.ZERO:
+		if not player.alive or player.is_falling() or player.move_dir == Vector2i.ZERO:
 			player.moved = false
 			continue
 		var dir := -player.move_dir if player.disease == SimExtra.Type.REVERSE else player.move_dir
@@ -476,6 +486,73 @@ func _update_trap(bomb: SimBomb, dt_ms: int) -> void:
 	bomb.flying = false
 	bomb.timer_ms = SimConstants.TRAP_FUSE_MS
 	bomb_landed.emit(bomb)
+
+
+func is_sudden_death() -> bool:
+	return round_time_ms < 0
+
+
+func _update_sudden_death(dt_ms: int) -> void:
+	round_time_ms -= dt_ms
+	if round_time_ms < 0:
+		observer.step(self, dt_ms)
+	for cell: Vector2i in vanishing.keys():
+		vanishing[cell] -= dt_ms
+		if vanishing[cell] <= 0:
+			vanishing.erase(cell)
+			board.set_tile(cell, SimTile.Type.NONE)
+			tile_vanished.emit(cell)
+	_update_falling(dt_ms)
+
+
+# Mauern werden zu Boden, Boxen zerbrechen (mit Drop), alles andere verschwindet nach 1 s und wird zum Loch.
+func vanish_tile(cell: Vector2i) -> void:
+	match board.get_tile(cell):
+		SimTile.Type.WALL:
+			board.set_tile(cell, SimTile.Type.GROUND)
+			tile_vanished.emit(cell)
+		SimTile.Type.BOX:
+			_pending_boxes[cell] = true
+		SimTile.Type.NONE, SimTile.Type.VANISHING, SimTile.Type.HOLE:
+			pass
+		_:
+			board.set_tile(cell, SimTile.Type.VANISHING)
+			vanishing[cell] = SimConstants.VANISH_MS
+			if extras.has(cell):
+				var type: int = extras[cell]
+				extras.erase(cell)
+				extra_destroyed.emit(cell)
+				_spawn_extra_on_free_cell(type)
+			tile_vanishing.emit(cell)
+
+
+# Zufälliges Ziel für den Observer: nicht NONE und nicht schon verschwindend; (-1, -1) falls es keines gibt.
+func random_vanishable_cell() -> Vector2i:
+	var candidates: Array[Vector2i] = []
+	for y in board.height:
+		for x in board.width:
+			var tile := board.get_tile(Vector2i(x, y))
+			if tile != SimTile.Type.NONE and tile != SimTile.Type.VANISHING and tile != SimTile.Type.HOLE:
+				candidates.append(Vector2i(x, y))
+	if candidates.is_empty():
+		return Vector2i(-1, -1)
+	return candidates[rng.randi() % candidates.size()]
+
+
+# Wer auf einem Loch steht, stürzt 1 s lang und stirbt dann; Bomben verschwinden ohne Detonation.
+func _update_falling(dt_ms: int) -> void:
+	for id in players:
+		var player: SimPlayer = players[id]
+		if not player.alive or board.get_tile(player.cell) != SimTile.Type.NONE:
+			continue
+		player.fall_ms = SimConstants.FALL_MS if player.fall_ms < 0 else player.fall_ms - dt_ms
+		if player.fall_ms <= 0:
+			player.alive = false
+			_drop_collected_extras(player)
+			player_died.emit(player.id, -1)
+	for bomb in bombs.duplicate():
+		if not bomb.flying and board.get_tile(bomb.cell) == SimTile.Type.NONE:
+			_remove_bomb(bomb)
 
 
 func _random_passable_cell() -> Vector2i:

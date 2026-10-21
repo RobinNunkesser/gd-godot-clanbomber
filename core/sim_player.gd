@@ -11,6 +11,8 @@ var cell: Vector2i:
 	set(value):
 		pos = Vector2i(value * int(SimConstants.CELL_SIZE))
 var alive := true
+# Restzeit des Sturzes in ein Loch in ms (-1 = nicht am Fallen).
+var fall_ms := -1
 var max_bombs := SimConstants.START_BOMBS
 var active_bombs := 0
 var power := SimConstants.START_POWER
@@ -42,6 +44,10 @@ func speed() -> int:
 	if disease == SimExtra.Type.OVERDRIVE:
 		value += SimConstants.OVERDRIVE_SPEED_BONUS
 	return value
+
+
+func is_falling() -> bool:
+	return fall_ms >= 0
 
 
 func is_diseased() -> bool:

@@ -30,3 +30,9 @@ const ARROW_CHILL_MS := 500
 const TRAP_HOLD_MS := 1000
 const TRAP_FLIGHT_SPEED := 200 # px/s
 const TRAP_FUSE_MS := 10
+
+# Sudden Death: Nach Ablauf der Rundenzeit fliegt der Observer von Feld zu Feld und lässt den Boden verschwinden.
+const ROUND_TIME_MS := 90000
+const OBSERVER_SPEED := 500 # px/s
+const VANISH_MS := 1000
+const FALL_MS := 1000

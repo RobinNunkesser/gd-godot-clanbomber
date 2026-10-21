@@ -33,6 +33,7 @@ func _draw() -> void:
 	if world == null:
 		return
 	_draw_board()
+	_draw_observer()
 	for cell: Vector2i in world.extras:
 		var c: Color = EXTRA_COLORS.get(world.extras[cell], Color.WHITE)
 		var type: int = world.extras[cell]
@@ -77,6 +78,9 @@ func _draw_board() -> void:
 			match tile:
 				SimTile.Type.NONE:
 					continue
+				SimTile.Type.VANISHING:
+					var ratio := clampf(float(world.vanishing.get(cell, 0)) / SimConstants.VANISH_MS, 0.0, 1.0)
+					draw_rect(Rect2(rect.get_center() - rect.size * ratio / 2.0, rect.size * ratio), Color("6d4c41"))
 				SimTile.Type.WALL:
 					draw_rect(rect, Color("455a64"))
 					draw_rect(rect, Color("263238"), false, 2.0)
@@ -113,3 +117,11 @@ func _draw_letter(center: Vector2, letter: String, color := Color.BLACK) -> void
 	var font := ThemeDB.fallback_font
 	var size := Vector2(font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 16))
 	draw_string(font, center + Vector2(-size.x / 2.0, 6.0), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, color)
+
+
+func _draw_observer() -> void:
+	if not world.is_sudden_death():
+		return
+	var pos := world.observer.position_px() + Vector2(CELL, CELL) / 2.0
+	draw_circle(pos, 12.0, Color("ff6a00"))
+	_draw_letter(pos, "!", Color.WHITE)

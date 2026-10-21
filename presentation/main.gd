@@ -80,6 +80,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_load_map()
 		KEY_F2:
 			_toggle_view()
+		KEY_F3:
+			_world.round_time_ms = mini(_world.round_time_ms, 2000)
 		KEY_F1:
 			_debug_spawn_extras()
 
@@ -106,6 +108,10 @@ func _connect_sounds() -> void:
 	_world.bomb_thrown.connect(func(_b: SimBomb) -> void: sfx.play("throw"))
 	_world.bomb_landed.connect(func(_b: SimBomb) -> void: sfx.play("land"))
 	_world.bomb_trapped.connect(func(_b: SimBomb) -> void: sfx.play("trap"))
+	_world.sudden_death_started.connect(func() -> void:
+		banner.text = "SUDDEN DEATH!"
+		sfx.play("disease"))
+	_world.tile_vanishing.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -3.0))
 
 
 func _toggle_view() -> void:
@@ -127,7 +133,8 @@ func _status_text() -> String:
 		if not p.alive:
 			line += "  tot"
 		lines.append(line)
-	return "    ".join(lines)
+	var clock := "SUDDEN DEATH" if _world.is_sudden_death() else "%d s" % ceili(_world.round_time_ms / 1000.0)
+	return clock + "    " + "    ".join(lines)
 
 
 func _check_round_end() -> void:

@@ -34,7 +34,7 @@ Hinweise:
 
 ## Fertig
 
-Simulationskern (87 Tests, Stand letzter Lauf mit Slice 5; seither nur Präsentation geändert):
+Simulationskern (98 Tests grün):
 
 | Slice | Inhalt |
 |---|---|
@@ -43,6 +43,7 @@ Simulationskern (87 Tests, Stand letzter Lauf mit Slice 5; seither nur Präsenta
 | 3 | Extras und Krankheiten (Overdrive, Reverse, Autobomb, Ansteckung) |
 | 4 | Kick und Glove (Wurf über 4 Zellen) |
 | 5 | Ice, Arrow, Trap |
+| 6 | Sudden Death (Observer, Löcher, Sturz), Testsuite `sim_sudden_death_test.gd`, 98 Tests grün |
 
 Präsentation:
 - 2D-Platzhalteransicht (`presentation/arena_view.gd`) und 3D-Ansicht (`presentation/arena_view_3d.gd`), Umschalten mit F2. Standard ist 3D.
@@ -67,6 +68,9 @@ Präsentation:
 - Das Trap-Ziel kann ein besetztes Feld sein.
 - Die Pfeil-Logik ist nicht Frame für Frame gegen das Original verifiziert.
 
+- Sudden Death: Bomben auf einem Loch verschwinden sofort (im Original fallen sie 1 s). Flugbomben werden nicht berücksichtigt. Die Rundenzeit läuft ab Start (im Original erst nach Aktivierung der Controller). Die Observer-Landung auf einer Mauer macht sie zu Boden, auf einer Box zerbricht sie. Das Ende der Runde bei weniger als 2 Spielern ist noch nicht im Kern, nur im Prototyp.
+- Observer-Grafik und Sudden-Death-Sounds sind Platzhalter (vorhandene Effekte wiederverwendet).
+
 ## Offene Punkte der Präsentation
 
 - Figuren sind in der 3D-Ansicht klein und schwer zu unterscheiden (Skalierung in `arena_view_3d.gd`, `model.scale`; Spielerring zeigt die Farbe). Ab Spieler 5 wiederholen sich die Modelle.
@@ -79,7 +83,7 @@ Präsentation:
 ## Nächste Schritte (Vorschlag, in dieser Reihenfolge)
 
 1. **Spielen und Feedback** zu Slice 4 und 5, Ton, 3D-Ansicht (Figurengröße, Kamera).
-2. **Sudden Death** (Wert-Referenzen in `docs/reference/ORIGINAL_BEHAVIOR.md` prüfen), mit Tests im Kern.
+2. ~~Sudden Death~~ (erledigt, Slice 6).
 3. **Rundenverwaltung:** Punkte, Scoreboard, mehrere Runden, Spielerzahl bis 8.
 4. **AI** (Controller_AI des Originals als Referenz), zuerst einfache Heuristik: Gefahrenfelder meiden, Boxen sprengen, Extras holen.
 5. **Karten-UI:** Karten mit zu wenigen Startfeldern ausblenden, Anzeigenamen getrennt vom Dateinamen.
