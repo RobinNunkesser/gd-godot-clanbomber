@@ -18,7 +18,11 @@ const CLASSIC := "Andreas Hundt
 *****************
 "
 
-const ORIGINAL_MAPS_RELATIVE := "../../../../references/forks/ClanBomber2/src/maps"
+# Kandidaten für das GPL-Datenpaket mit den Originalkarten (Geschwister-Repo im Monorepo oder Referenzbaum).
+const ORIGINAL_MAPS_CANDIDATES := [
+	"../gd-godot-clanbomber-original-maps/maps",
+	"../../../../references/forks/ClanBomber2/src/maps",
+]
 
 
 func _row(y: int, text: String) -> String:
@@ -107,14 +111,20 @@ func test_rejects_invalid_player_count() -> void:
 	assert_bool(MapParser.parse(CLASSIC.replace("\n8\n", "\nacht\n")).is_valid()).is_false()
 
 
-# Optional: lädt alle Originalkarten, wenn der Referenzbaum (Monorepo) oder CLANBOMBER_MAPS_DIR vorhanden ist.
+# Optional: lädt alle Originalkarten aus dem GPL-Datenpaket, dem Referenzbaum oder CLANBOMBER_MAPS_DIR, falls vorhanden.
 func test_loads_all_original_maps_if_available() -> void:
 	var dir_path := OS.get_environment("CLANBOMBER_MAPS_DIR")
-	if dir_path.is_empty():
-		dir_path = ProjectSettings.globalize_path("res://").path_join(ORIGINAL_MAPS_RELATIVE).simplify_path()
-	var dir := DirAccess.open(dir_path)
+	var dir: DirAccess = null
+	if not dir_path.is_empty():
+		dir = DirAccess.open(dir_path)
+	else:
+		for candidate: String in ORIGINAL_MAPS_CANDIDATES:
+			dir_path = ProjectSettings.globalize_path("res://").path_join(candidate).simplify_path()
+			dir = DirAccess.open(dir_path)
+			if dir != null:
+				break
 	if dir == null:
-		push_warning("Originalkarten nicht gefunden, Test übersprungen: " + dir_path)
+		push_warning("Originalkarten nicht gefunden, Test übersprungen")
 		return
 	var count := 0
 	for file in dir.get_files():

@@ -27,6 +27,10 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 `map_parser_test.gd` lädt zusätzlich alle Originalkarten, wenn der Referenzbaum im Monorepo (`artifacts/references/forks/ClanBomber2/src/maps`) oder `CLANBOMBER_MAPS_DIR` verfügbar ist, sonst wird dieser Test übersprungen. Die Originalkarten sind bewusst nicht Teil dieses Repos (Lizenz-/Rechteklärung offen).
 
+## Karten
+
+`maps/` enthält eigene Karten (`crossroads`, `ice_rink`, MIT). Die 33 Originalkarten liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos.
+
 ## Lizenz
 
-Noch nicht festgelegt. Das Original ist GPL; dieser Code ist eine Clean-Room-Neuimplementierung aus der Verhaltensbeschreibung. Assets (Kenney CC0) werden erst nach Auswahl übernommen.
+Code und eigene Karten: MIT (`LICENSE`). Drittkomponenten und Abgrenzung zum Original: `THIRD_PARTY.md`. Original-Sounds und -Grafiken werden nicht übernommen (Herkunft ungeklärt), Sounds kommen aus CC0-Quellen (Kenney).
