@@ -150,7 +150,7 @@ func _make_player(id: int) -> Node3D:
 	var letter: String = CHARACTER_LETTERS[(id - 1) % CHARACTER_LETTERS.size()]
 	var model: Node3D = load("%scharacter-%s.glb" % [CHARACTER_DIR, letter]).instantiate()
 	model.name = "Model"
-	model.scale = Vector3.ONE * 0.4
+	model.scale = Vector3.ONE * 0.35
 	root.add_child(model)
 	var ring := MeshInstance3D.new()
 	var torus := CylinderMesh.new()
