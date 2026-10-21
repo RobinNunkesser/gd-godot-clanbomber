@@ -34,7 +34,7 @@ Hinweise:
 
 ## Fertig
 
-Simulationskern (98 Tests grün):
+Simulationskern (111 Tests grün):
 
 | Slice | Inhalt |
 |---|---|
@@ -44,6 +44,7 @@ Simulationskern (98 Tests grün):
 | 4 | Kick und Glove (Wurf über 4 Zellen) |
 | 5 | Ice, Arrow, Trap |
 | 6 | Sudden Death (Observer, Löcher, Sturz), Testsuite `sim_sudden_death_test.gd`, 98 Tests grün |
+| 7 | Rundenverwaltung (`SimMatch`: Punkte, Kills, Matchsieg bei 5 Punkten), Scoreboard-Overlay, Kartenwechsel nach jeder Runde, 111 Tests grün |
 
 Präsentation:
 - 2D-Platzhalteransicht (`presentation/arena_view.gd`) und 3D-Ansicht (`presentation/arena_view_3d.gd`), Umschalten mit F2. Standard ist 3D.
@@ -68,7 +69,8 @@ Präsentation:
 - Das Trap-Ziel kann ein besetztes Feld sein.
 - Die Pfeil-Logik ist nicht Frame für Frame gegen das Original verifiziert.
 
-- Sudden Death: Bomben auf einem Loch verschwinden sofort (im Original fallen sie 1 s). Flugbomben werden nicht berücksichtigt. Die Rundenzeit läuft ab Start (im Original erst nach Aktivierung der Controller). Die Observer-Landung auf einer Mauer macht sie zu Boden, auf einer Box zerbricht sie. Das Ende der Runde bei weniger als 2 Spielern ist noch nicht im Kern, nur im Prototyp.
+- Sudden Death: Bomben auf einem Loch verschwinden sofort (im Original fallen sie 1 s). Flugbomben werden nicht berücksichtigt. Die Rundenzeit läuft ab Start (im Original erst nach Aktivierung der Controller). Die Observer-Landung auf einer Mauer macht sie zu Boden, auf einer Box zerbricht sie.
+- Rundenverwaltung: Rundenende und Punkte wie im Original (+1 je Überlebendem, bei Gleichstand keiner). Nach jeder Runde folgt die nächste Karte der Liste (Karten ohne zwei Startfelder werden übersprungen); die Kartenreihenfolge ist nicht zufällig. Ausstehend: Zufallskarten, Zufallspositionen, einstellbares Punkteziel (Konstante `POINTS_TO_WIN` = 5).
 - Observer-Grafik und Sudden-Death-Sounds sind Platzhalter (vorhandene Effekte wiederverwendet).
 
 ## Offene Punkte der Präsentation
@@ -85,7 +87,7 @@ Präsentation:
 
 1. **Spielen und Feedback** zu Slice 4 und 5, Ton, 3D-Ansicht (Figurengröße, Kamera).
 2. ~~Sudden Death~~ (erledigt, Slice 6).
-3. **Rundenverwaltung:** Punkte, Scoreboard, mehrere Runden, Spielerzahl bis 8.
+3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, der Prototyp hat nur Eingaben für 2).
 4. **AI** (Controller_AI des Originals als Referenz), zuerst einfache Heuristik: Gefahrenfelder meiden, Boxen sprengen, Extras holen.
 5. **Karten-UI:** Karten mit zu wenigen Startfeldern ausblenden, Anzeigenamen getrennt vom Dateinamen.
 6. **Menü und Eingabe:** Gamepad, Tastenbelegung, Spielerzahl.

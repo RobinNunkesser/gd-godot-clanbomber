@@ -36,3 +36,6 @@ const ROUND_TIME_MS := 90000
 const OBSERVER_SPEED := 500 # px/s
 const VANISH_MS := 1000
 const FALL_MS := 1000
+
+const POINTS_TO_WIN := 5
+const MIN_PLAYERS_FOR_MATCH := 2

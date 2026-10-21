@@ -1,8 +1,11 @@
 extends Node2D
 ## Spielbarer Prototyp: lädt eine Karte, speist die Simulation und liest Eingaben.
-## Spieler 1: WASD + Leertaste, Spieler 2: Pfeiltasten + Enter. N/P: nächste/vorherige Karte, R: Neustart.
+## Spieler 1: WASD + Leertaste, Spieler 2: Pfeiltasten + Enter.
+## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match.
 
 const MAP_DIR := "res://maps"
+const PLAYER_COUNT := 2
+const CONTINUE_LOCK_MS := 800
 
 @onready var view: ArenaView = $ArenaView
 @onready var view3d: ArenaView3D = $ArenaView3D
@@ -14,7 +17,10 @@ var _maps: Array[String] = []
 var _map_index := 0
 var _world: SimWorld
 var _clock_ms := 0.0
+var _match := SimMatch.new()
+var _scoreboard := Scoreboard.new()
 var _round_over := false
+var _continue_unlock_at := 0
 
 
 func _ready() -> void:
@@ -24,31 +30,49 @@ func _ready() -> void:
 	_maps.sort()
 	var start := _maps.find("crossroads.map")
 	_map_index = maxi(start, 0)
-	_load_map()
+	$UI.add_child(_scoreboard)
+	_load_map(0)
 
 
-func _load_map() -> void:
+# Lädt die Karte `step` Positionen weiter und überspringt Karten, die für die Spielerzahl nicht taugen.
+func _load_map(step: int) -> void:
+	if _match.state == SimMatch.State.MATCH_OVER:
+		_match.reset()
+	_match.start_next_round()
+	_scoreboard.visible = false
+	for attempt in _maps.size():
+		_map_index = posmod(_map_index + step, _maps.size())
+		if _try_load_current_map():
+			return
+		step = step if step != 0 else 1
+	banner.text = "Keine passende Karte gefunden"
+
+
+func _try_load_current_map() -> bool:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var text := FileAccess.get_file_as_string("%s/%s" % [MAP_DIR, _maps[_map_index]])
 	var data := MapParser.parse(text, rng)
 	if not data.is_valid():
-		banner.text = "%s: %s" % [_maps[_map_index], data.error]
-		return
+		return false
+	for slot in PLAYER_COUNT:
+		if not data.starts.has(slot):
+			return false
 	_world = SimWorld.new(SimBoard.from_map(data), rng)
-	for slot in mini(2, data.starts.size()):
-		if data.starts.has(slot):
-			_world.add_player(slot + 1, data.starts[slot])
+	for slot in PLAYER_COUNT:
+		_world.add_player(slot + 1, data.starts[slot])
+	_match.register_players(_world.players.keys())
 	_connect_sounds()
 	view.world = _world
 	view3d.bind(_world)
 	_round_over = false
 	banner.text = "%s  (von %s)" % [_maps[_map_index].get_basename(), data.author]
 	view.queue_redraw()
+	return true
 
 
 func _physics_process(delta: float) -> void:
-	if _world == null:
+	if _world == null or _scoreboard.visible:
 		return
 	_world.set_move_dir(1, _axis(KEY_A, KEY_D, KEY_W, KEY_S))
 	_world.set_move_dir(2, _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN))
@@ -65,25 +89,40 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or _world == null:
 		return
+	if _scoreboard.visible:
+		_handle_scoreboard_key(key.keycode)
+		return
 	match key.keycode:
 		KEY_SPACE:
 			_world.action_bomb(1)
 		KEY_ENTER, KEY_KP_ENTER:
 			_world.action_bomb(2)
 		KEY_N:
-			_map_index = (_map_index + 1) % _maps.size()
-			_load_map()
+			_load_map(1)
 		KEY_P:
-			_map_index = (_map_index - 1 + _maps.size()) % _maps.size()
-			_load_map()
+			_load_map(-1)
 		KEY_R:
-			_load_map()
+			_load_map(0)
+		KEY_F5:
+			_match.reset()
+			_load_map(0)
 		KEY_F2:
 			_toggle_view()
 		KEY_F3:
 			_world.round_time_ms = mini(_world.round_time_ms, 2000)
 		KEY_F1:
 			_debug_spawn_extras()
+
+
+func _handle_scoreboard_key(keycode: Key) -> void:
+	if Time.get_ticks_msec() < _continue_unlock_at:
+		return
+	if keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+		sfx.play("ui_select")
+		_load_map(1)
+	elif keycode == KEY_F5:
+		_match.reset()
+		_load_map(0)
 
 
 func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
@@ -127,7 +166,7 @@ func _status_text() -> String:
 	var lines: Array[String] = []
 	for id: int in _world.players:
 		var p: SimPlayer = _world.players[id]
-		var line := "P%d  B%d P%d S%d%s%s" % [id, p.max_bombs, p.power, p.skateboards, " K" if p.can_kick else "", " G" if p.can_glove else ""]
+		var line := "P%d ★%d  B%d P%d S%d%s%s" % [id, _match.points_of(id), p.max_bombs, p.power, p.skateboards, " K" if p.can_kick else "", " G" if p.can_glove else ""]
 		if p.is_diseased():
 			line += " [%s %ds]" % [ArenaView3D.EXTRA_LETTERS[p.disease], ceili(p.disease_ms / 1000.0)]
 		if not p.alive:
@@ -138,17 +177,12 @@ func _status_text() -> String:
 
 
 func _check_round_end() -> void:
-	if _round_over or _world.players.size() < 2:
+	if _round_over or not _match.update(_world):
 		return
-	var alive: Array[int] = []
-	for id: int in _world.players:
-		if _world.players[id].alive:
-			alive.append(id)
-	if alive.size() <= 1:
-		_round_over = true
-		sfx.play("round_end")
-		banner.text = "Runde vorbei: %s  (R = Neustart, N = nächste Karte)" % (
-			"Spieler %d gewinnt" % alive[0] if alive.size() == 1 else "Unentschieden")
+	_round_over = true
+	_continue_unlock_at = Time.get_ticks_msec() + CONTINUE_LOCK_MS
+	sfx.play("round_end")
+	_scoreboard.show_result(_match)
 
 
 # Testhilfe (F1): legt jeden Extra-Typ in eine Reihe neben Spieler 1.
