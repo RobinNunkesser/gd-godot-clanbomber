@@ -3,8 +3,16 @@ config_version=5
 [application]
 
 config/name="ClanBomber Godot"
+run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7")
 
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
+
+[display]
+
+window/size/viewport_width=680
+window/size/viewport_height=560
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"

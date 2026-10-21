@@ -18,6 +18,18 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 
 Noch nicht enthalten: Extra-Aufnahme, Kick/Glove, Ice/Arrow/Trap-Verhalten, Sudden Death, Handicaps, AI, Präsentation.
 
+## Spielbarer Prototyp (2D-Platzhalter)
+
+Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `scenes/main.tscn` lädt eine Karte aus `maps/` und zeichnet den Zustand des Simulationskerns (`presentation/`).
+
+| Taste | Aktion |
+|---|---|
+| WASD, Leertaste | Spieler 1 bewegen, Bombe legen |
+| Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
+| N / P / R | nächste / vorherige Karte / Neustart |
+
+Extras fallen und werden angezeigt, können aber noch nicht aufgenommen werden. Kein Ton.
+
 ## Tests
 
 GdUnit4 (v6.2.2, unter `addons/` mitgeliefert), Godot 4.7:
