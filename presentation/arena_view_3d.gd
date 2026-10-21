@@ -60,6 +60,7 @@ var _box_mesh := BoxMesh.new()
 var _bomb_mesh := SphereMesh.new()
 var _flame_mesh := BoxMesh.new()
 var _materials: Dictionary = {}
+var _effects := Effects3D.new()
 
 
 func _ready() -> void:
@@ -80,6 +81,8 @@ func _setup_environment() -> void:
 	var pitch := deg_to_rad(78.0)
 	camera.position = center + Vector3(0, sin(pitch), cos(pitch)) * 17.5
 	camera.rotation.x = -pitch
+	add_child(_effects)
+	_effects.attach_camera(camera)
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-60, -30, 0)
 	light.shadow_enabled = true
@@ -90,6 +93,9 @@ func _setup_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.75, 0.75, 0.85)
 	env.ambient_light_energy = 0.7
+	env.glow_enabled = true
+	env.glow_intensity = 0.8
+	env.glow_bloom = 0.1
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -97,6 +103,7 @@ func _setup_environment() -> void:
 
 func bind(p_world: SimWorld) -> void:
 	world = p_world
+	_connect_effects()
 	for node in [_static_root]:
 		if node != null:
 			node.queue_free()
@@ -113,6 +120,20 @@ func bind(p_world: SimWorld) -> void:
 	for id: int in world.players:
 		_players[id] = _make_player(id)
 	visible = true
+
+
+func _connect_effects() -> void:
+	world.bomb_exploded.connect(func(_b: SimBomb, e: SimExplosion) -> void: _effects.explosion(e.cells, e.origin))
+	world.box_destroyed.connect(func(c: Vector2i) -> void: _effects.box_break(c))
+	world.bomb_placed.connect(func(b: SimBomb) -> void: _effects.bomb_placed(_world_pos(Vector2(b.pos))))
+	world.tile_vanishing.connect(func(c: Vector2i) -> void: _effects.tile_drop(c))
+	world.extra_collected.connect(func(id: int, type: int) -> void:
+		var player: SimPlayer = world.players[id]
+		var color: Color = EXTRA_COLORS.get(type, Color.WHITE)
+		_effects.pickup(_world_pos(Vector2(player.pos)), color))
+	world.player_died.connect(func(id: int, _k: int) -> void:
+		var player: SimPlayer = world.players[id]
+		_effects.death(_world_pos(Vector2(player.pos)), PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()]))
 
 
 func _build_board() -> void:
@@ -300,6 +321,7 @@ func _sync_bombs() -> void:
 		if bomb.flying or bomb.trap_flight:
 			lift = 0.8
 		var pulse := 1.0 + 0.08 * sin(bomb.timer_ms * 0.02)
+		pulse *= 1.0 + 0.25 * maxf(1.0 - (SimConstants.BOMB_COUNTDOWN_MS - bomb.timer_ms) / 150.0, 0.0)
 		node.scale = Vector3.ONE * 1.5 * pulse
 		node.position = _world_pos(Vector2(bomb.pos)) + Vector3(0, lift, 0)
 	for id: int in _bombs.keys():
@@ -381,8 +403,10 @@ func _sync_flames() -> void:
 	for cell: Vector2i in cells:
 		if not _flames.has(cell):
 			var flame := _add_mesh(self, _flame_mesh, _flame_material(), Vector3(cell.x + 0.5, 0.3, cell.y + 0.5))
+			flame.set_meta("born", _time)
 			_flames[cell] = flame
-		_flames[cell].scale.y = 1.0 + 0.3 * sin(_time * 30.0 + cell.x * 2.0)
+		var grow := minf((_time - _flames[cell].get_meta("born")) * 12.0, 1.0)
+		_flames[cell].scale = Vector3(grow, grow * (1.0 + 0.3 * sin(_time * 30.0 + cell.x * 2.0)), grow)
 
 
 func _sync_players() -> void:

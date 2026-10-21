@@ -93,7 +93,7 @@ Präsentation:
 4. ~~AI~~ (einfache Heuristik erledigt, Slice 8). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden viele Runden passiv erst im Sudden Death. Verbesserung: aktiver auf den Gegner zulaufen, Schwierigkeitsgrade.
 5. **Karten-UI:** Karten mit zu wenigen Startfeldern ausblenden, Anzeigenamen getrennt vom Dateinamen.
 6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad). Offen: Tastenbelegung ändern, Gamepad mit echter Hardware testen, mehr als 4 Spieler.
-7. **Optik:** eigene Modelle oder Kenney-Varianten für Extras und Flammen, Partikel, Musik.
+7. **Optik:** Juice-Stufe 1 erledigt (`effects_3d.gd`: Kamerawackeln, Partikel für Explosion/Kisten/Pickup/Tod/Bombe/Sudden-Death-Löcher, Lichtblitze, Bloom, Flammen wachsen ein, Bomben-Squash). Offen: Flammen als Modelle, Figuren-Squash/Hit-Stop, Musik.
 8. **Kids-Mode** (Cube Pets).
 
 Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentation, dann README und diese Datei aktualisieren.
