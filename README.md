@@ -21,9 +21,10 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` (Kacheln) | Ice: Figuren rutschen mit 80 px/s in Blickrichtung weiter, gerollte Bomben werden schneller. Arrow: schiebt Bomben in Pfeilrichtung, entgegenkommende Bomben werden 0,5 s gehalten und umgelenkt. Trap: hält Bomben 1 s, dann Flug (200 px/s, über Wände) auf ein zufälliges freies Feld, dort Zünder 10 ms |
 | `sim_match.gd` | Rundenverwaltung: Rundenende (höchstens 1 Überlebender, keine Explosion, niemand fällt), +1 Punkt je Überlebendem, Kills, Ranking, Matchsieg bei 5 Punkten; beliebige Spielerzahl |
 | `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Nach 90 s fliegt der Observer (500 px/s) zu zufälligen Feldern (erster Flug nur Ansage). Boden wird 1 s kleiner, dann Loch; Mauer wird Boden, Box zerbricht mit Drop; Extras weichen aus. Figuren auf einem Loch stürzen 1 s und sterben (ohne Killer), Bomben verschwinden ohne Detonation |
+| `sim_ai.gd` | Einfache Heuristik-AI (deterministisch): flieht aus Gefahrenzonen (zeitlich bewertet, inkl. Kettenreaktionen), legt Bomben nur mit Fluchtweg, sprengt Boxen, jagt Gegner, sammelt gute Extras. Ignoriert Kick, Glove, Ice, Arrow, Trap und Krankheits-Extras; wartet oft passiv, daher enden manche Runden erst im Sudden Death |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: AI, Menü, Musik.
+Noch nicht enthalten: Menü, Musik.
 
 ## Spielbarer Prototyp (2D-Platzhalter)
 
@@ -32,7 +33,8 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Taste | Aktion |
 |---|---|
 | WASD, Leertaste | Spieler 1 bewegen, Bombe legen |
-| Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen |
+| Pfeiltasten, Enter | Spieler 2 bewegen, Bombe legen (nur wenn die AI aus ist) |
+| F4 | Spieler 2: AI (Standard) / Mensch |
 | N / P / R | nächste / vorherige Karte / Neustart |
 | F2 | Ansicht umschalten: 3D (Kenney-Modelle, Standard) / 2D (Platzhalter) |
 | F5 | Neues Match (Punkte zurücksetzen) |

@@ -34,7 +34,7 @@ Hinweise:
 
 ## Fertig
 
-Simulationskern (111 Tests grün):
+Simulationskern (122 Tests grün):
 
 | Slice | Inhalt |
 |---|---|
@@ -45,6 +45,7 @@ Simulationskern (111 Tests grün):
 | 5 | Ice, Arrow, Trap |
 | 6 | Sudden Death (Observer, Löcher, Sturz), Testsuite `sim_sudden_death_test.gd`, 98 Tests grün |
 | 7 | Rundenverwaltung (`SimMatch`: Punkte, Kills, Matchsieg bei 5 Punkten), Scoreboard-Overlay, Kartenwechsel nach jeder Runde, 111 Tests grün |
+| 8 | Einfache AI (`SimAI`, Spieler 2 im Prototyp, F4 schaltet um), 122 Tests grün |
 
 Präsentation:
 - 2D-Platzhalteransicht (`presentation/arena_view.gd`) und 3D-Ansicht (`presentation/arena_view_3d.gd`), Umschalten mit F2. Standard ist 3D.
@@ -88,7 +89,7 @@ Präsentation:
 1. **Spielen und Feedback** zu Slice 4 und 5, Ton, 3D-Ansicht (Figurengröße, Kamera).
 2. ~~Sudden Death~~ (erledigt, Slice 6).
 3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, der Prototyp hat nur Eingaben für 2).
-4. **AI** (Controller_AI des Originals als Referenz), zuerst einfache Heuristik: Gefahrenfelder meiden, Boxen sprengen, Extras holen.
+4. ~~AI~~ (einfache Heuristik erledigt, Slice 8). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden viele Runden passiv erst im Sudden Death. Verbesserung: aktiver auf den Gegner zulaufen, Schwierigkeitsgrade.
 5. **Karten-UI:** Karten mit zu wenigen Startfeldern ausblenden, Anzeigenamen getrennt vom Dateinamen.
 6. **Menü und Eingabe:** Gamepad, Tastenbelegung, Spielerzahl.
 7. **Optik:** eigene Modelle oder Kenney-Varianten für Extras und Flammen, Partikel, Musik.

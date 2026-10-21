@@ -1,6 +1,6 @@
 extends Node2D
 ## Spielbarer Prototyp: lädt eine Karte, speist die Simulation und liest Eingaben.
-## Spieler 1: WASD + Leertaste, Spieler 2: Pfeiltasten + Enter.
+## Spieler 1: WASD + Leertaste, Spieler 2: Pfeiltasten + Enter oder AI (F4 schaltet um).
 ## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match.
 
 const MAP_DIR := "res://maps"
@@ -21,6 +21,8 @@ var _match := SimMatch.new()
 var _scoreboard := Scoreboard.new()
 var _round_over := false
 var _continue_unlock_at := 0
+var _ai_enabled := true
+var _ai := SimAI.new(2)
 
 
 func _ready() -> void:
@@ -59,6 +61,7 @@ func _try_load_current_map() -> bool:
 		if not data.starts.has(slot):
 			return false
 	_world = SimWorld.new(SimBoard.from_map(data), rng)
+	_ai = SimAI.new(2)
 	for slot in PLAYER_COUNT:
 		_world.add_player(slot + 1, data.starts[slot])
 	_match.register_players(_world.players.keys())
@@ -75,10 +78,13 @@ func _physics_process(delta: float) -> void:
 	if _world == null or _scoreboard.visible:
 		return
 	_world.set_move_dir(1, _axis(KEY_A, KEY_D, KEY_W, KEY_S))
-	_world.set_move_dir(2, _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN))
 	_clock_ms += delta * 1000.0
 	var whole := int(_clock_ms)
 	_clock_ms -= whole
+	if _ai_enabled:
+		_ai.update(_world, whole)
+	else:
+		_world.set_move_dir(2, _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN))
 	_world.tick(whole)
 	_check_round_end()
 	view.queue_redraw()
@@ -96,7 +102,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_SPACE:
 			_world.action_bomb(1)
 		KEY_ENTER, KEY_KP_ENTER:
-			_world.action_bomb(2)
+			if not _ai_enabled:
+				_world.action_bomb(2)
+		KEY_F4:
+			_ai_enabled = not _ai_enabled
+			banner.text = "Spieler 2: %s" % ("AI" if _ai_enabled else "Mensch")
 		KEY_N:
 			_load_map(1)
 		KEY_P:
