@@ -1,0 +1,127 @@
+class_name MapParserTest
+extends GdUnitTestSuite
+
+const CLASSIC := "Andreas Hundt
+8
+*****************
+*0 +   + +   + 1*
+* * * * * * * * *
+*+   + + + +   +*
+* * * * * * * * *
+* +   + + +   + *
+* * * * * * * * *
+* +   + + +   + *
+* * * * * * * * *
+*+   + + + +   +*
+* * * * * * * * *
+*2 +   + +   + 3*
+*****************
+"
+
+const ORIGINAL_MAPS_RELATIVE := "../../../../references/forks/ClanBomber2/src/maps"
+
+
+func _row(y: int, text: String) -> String:
+	return text.split("\n")[2 + y]
+
+
+func test_parses_classic_map() -> void:
+	var map := MapParser.parse(CLASSIC)
+	assert_bool(map.is_valid()).is_true()
+	assert_str(map.author).is_equal("Andreas Hundt")
+	assert_int(map.max_players).is_equal(8)
+	assert_int(map.tiles.size()).is_equal(17 * 13)
+	assert_int(map.tiles[0]).is_equal(SimTile.Type.WALL)
+	assert_int(map.tiles[1 * 17 + 3]).is_equal(SimTile.Type.BOX)
+	assert_int(map.tiles[1 * 17 + 2]).is_equal(SimTile.Type.GROUND)
+
+
+func test_start_positions_are_ground() -> void:
+	var map := MapParser.parse(CLASSIC)
+	assert_dict(map.starts).has_size(4)
+	assert_that(map.starts[0]).is_equal(Vector2i(1, 1))
+	assert_that(map.starts[3]).is_equal(Vector2i(15, 11))
+	assert_int(map.tiles[1 * 17 + 1]).is_equal(SimTile.Type.GROUND)
+
+
+func test_special_tiles() -> void:
+	var lines := CLASSIC.split("\n")
+	lines[3] = "*S<>^vo-" + " ".repeat(8) + "*"
+	var map := MapParser.parse("\n".join(lines))
+	assert_bool(map.is_valid()).is_true()
+	var expected := [
+		SimTile.Type.WALL, SimTile.Type.ICE, SimTile.Type.ARROW_LEFT, SimTile.Type.ARROW_RIGHT,
+		SimTile.Type.ARROW_UP, SimTile.Type.ARROW_DOWN, SimTile.Type.TRAP, SimTile.Type.NONE,
+	]
+	for x in expected.size():
+		assert_int(map.tiles[1 * 17 + x]).is_equal(expected[x])
+
+
+func test_random_tile_is_seeded_and_mixed() -> void:
+	var lines := CLASSIC.split("\n")
+	lines[3] = "*" + "R".repeat(15) + "*"
+	var text := "\n".join(lines)
+	var rng_a := RandomNumberGenerator.new()
+	rng_a.seed = 42
+	var rng_b := RandomNumberGenerator.new()
+	rng_b.seed = 42
+	var a := MapParser.parse(text, rng_a)
+	var b := MapParser.parse(text, rng_b)
+	assert_array(a.tiles).is_equal(b.tiles)
+	var boxes := 0
+	for x in range(1, 16):
+		var tile := a.tiles[1 * 17 + x]
+		assert_bool(tile == SimTile.Type.BOX or tile == SimTile.Type.GROUND).is_true()
+		boxes += 1 if tile == SimTile.Type.BOX else 0
+	assert_bool(boxes > 0 and boxes < 15).is_true()
+
+
+func test_short_lines_are_padded() -> void:
+	var lines := CLASSIC.split("\n")
+	lines[3] = "*0"
+	var map := MapParser.parse("\n".join(lines))
+	assert_bool(map.is_valid()).is_true()
+	assert_int(map.tiles[1 * 17 + 10]).is_equal(SimTile.Type.GROUND)
+
+
+func test_rejects_unknown_character() -> void:
+	var lines := CLASSIC.split("\n")
+	lines[3] = "*?" + " ".repeat(14) + "*"
+	var map := MapParser.parse("\n".join(lines))
+	assert_bool(map.is_valid()).is_false()
+	assert_str(map.error).contains("Unbekanntes Zeichen")
+
+
+func test_rejects_too_few_lines() -> void:
+	assert_bool(MapParser.parse("Autor\n2\n***").is_valid()).is_false()
+
+
+func test_blank_lines_before_player_count_are_skipped() -> void:
+	var map := MapParser.parse(CLASSIC.replace("Hundt\n8", "Hundt\n\n8"))
+	assert_bool(map.is_valid()).is_true()
+	assert_int(map.max_players).is_equal(8)
+	assert_int(map.tiles[0]).is_equal(SimTile.Type.WALL)
+
+
+func test_rejects_invalid_player_count() -> void:
+	assert_bool(MapParser.parse(CLASSIC.replace("\n8\n", "\nacht\n")).is_valid()).is_false()
+
+
+# Optional: lädt alle Originalkarten, wenn der Referenzbaum (Monorepo) oder CLANBOMBER_MAPS_DIR vorhanden ist.
+func test_loads_all_original_maps_if_available() -> void:
+	var dir_path := OS.get_environment("CLANBOMBER_MAPS_DIR")
+	if dir_path.is_empty():
+		dir_path = ProjectSettings.globalize_path("res://").path_join(ORIGINAL_MAPS_RELATIVE).simplify_path()
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		push_warning("Originalkarten nicht gefunden, Test übersprungen: " + dir_path)
+		return
+	var count := 0
+	for file in dir.get_files():
+		if not file.ends_with(".map"):
+			continue
+		var map := MapParser.parse(FileAccess.get_file_as_string(dir_path.path_join(file)))
+		assert_bool(map.is_valid()).override_failure_message("%s: %s" % [file, map.error]).is_true()
+		assert_bool(map.starts.size() >= map.max_players).override_failure_message("%s: Starts %d < Spieler %d" % [file, map.starts.size(), map.max_players]).is_true()
+		count += 1
+	assert_int(count).is_greater(30)
