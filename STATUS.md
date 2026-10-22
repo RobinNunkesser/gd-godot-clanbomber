@@ -72,27 +72,27 @@ Präsentation:
 - Die Pfeil-Logik ist nicht Frame für Frame gegen das Original verifiziert.
 
 - Sudden Death: Bomben auf einem Loch verschwinden sofort (im Original fallen sie 1 s). Flugbomben werden nicht berücksichtigt. Die Rundenzeit läuft ab Start (im Original erst nach Aktivierung der Controller). Die Observer-Landung auf einer Mauer macht sie zu Boden, auf einer Box zerbricht sie.
-- Rundenverwaltung: Rundenende und Punkte wie im Original (+1 je Überlebendem, bei Gleichstand keiner). Nach jeder Runde folgt die nächste Karte der Liste (Karten ohne zwei Startfelder werden übersprungen); die Kartenreihenfolge ist nicht zufällig. Ausstehend: Zufallskarten, Zufallspositionen, einstellbares Punkteziel (Konstante `POINTS_TO_WIN` = 5).
+- Rundenverwaltung: Rundenende und Punkte wie im Original (+1 je Überlebendem, bei Gleichstand keiner). Das Menü erlaubt eine feste Karte (bleibt über alle Runden) oder Zufallskarte je Runde sowie 1-10 Punkte zum Sieg. Karten ohne genug Startfelder für die aktiven Plätze werden übersprungen. Ausstehend: Zufallspositionen der Startfelder.
 - Observer-Grafik und Sudden-Death-Sounds sind Platzhalter (vorhandene Effekte wiederverwendet).
 
 ## Offene Punkte der Präsentation
 
 - Figuren sind in der 3D-Ansicht klein und schwer zu unterscheiden (Skalierung in `arena_view_3d.gd`, `model.scale`; Spielerring zeigt die Farbe). Ab Spieler 5 wiederholen sich die Modelle.
-- Extras, Flammen, Eis, Trap, Pfeile sind noch Platzhalter-Primitive.
+- Eis, Trap und Pfeile sind noch Platzhalter-Grafik (Extras und Flammen sind Modelle).
 - Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
 - Extras sind Mini-Dungeon-Modelle (`weapon-sword` Power, `pot` Bomb, `coin` Skateboard, `weapon-spear` Kick, `shield-round` Glove, `potion` für die drei Krankheiten, farblich getönt) plus schwebender Buchstabe; Zuordnung in `EXTRA_MODELS` in `arena_view_3d.gd`. Ungenutzt: `key`, `chest`, `column`, `rocks`.
-- Es gibt nur 2 Spieler und `crossroads.map` als Startkarte (N/P wechselt).
+- Das Menü kennt 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI); Standard ist Mensch gegen AI auf `crossroads.map`. Der Kern kann mehr Spieler.
 - Keine Musik (in keinem der Pakete enthalten).
-- Ton und Animationen sind noch nicht im Spiel beurteilt worden.
+- Feedback zu Ton, Animationen, Kamera, Wackelstärke und Flammen beim Spielen steht noch aus. Das Gamepad wurde vom Nutzer als funktionierend bestätigt.
 
 ## Nächste Schritte (Vorschlag, in dieser Reihenfolge)
 
-1. **Spielen und Feedback** zu Slice 4 und 5, Ton, 3D-Ansicht (Figurengröße, Kamera).
+1. **Spielen und Feedback** zu Slice 4-7, Ton, 3D-Ansicht (Figurengröße, Kamera), Juice-Stärke.
 2. ~~Sudden Death~~ (erledigt, Slice 6).
-3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, der Prototyp hat nur Eingaben für 2).
+3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, das Menü bietet 4 Plätze).
 4. ~~AI~~ (einfache Heuristik erledigt, Slice 8). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden viele Runden passiv erst im Sudden Death. Verbesserung: aktiver auf den Gegner zulaufen, Schwierigkeitsgrade.
-5. **Karten-UI:** Karten mit zu wenigen Startfeldern ausblenden, Anzeigenamen getrennt vom Dateinamen.
-6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad). Offen: Tastenbelegung ändern, Gamepad mit echter Hardware testen, mehr als 4 Spieler.
+5. **Karten-UI:** Karten mit zu wenigen Startfeldern im Menü ausblenden (bisher nur übersprungen), Anzeigenamen getrennt vom Dateinamen.
+6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad). Gamepad bestätigt. Offen: Tastenbelegung ändern, mehr als 4 Spieler.
 7. **Optik:** Juice-Stufe 1 erledigt (`effects_3d.gd`: Kamerawackeln, Partikel für Explosion/Kisten/Pickup/Tod/Bombe/Sudden-Death-Löcher, Lichtblitze, Bloom, Flammen wachsen ein, Bomben-Squash). Flammen sind jetzt Kegel-Modelle mit Kern und Funken. Offen: Figuren-Squash/Hit-Stop, Musik.
 8. **Kids-Mode** (Cube Pets).
 
