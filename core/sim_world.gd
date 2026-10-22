@@ -12,6 +12,7 @@ signal bomb_landed(bomb: SimBomb)
 signal bomb_trapped(bomb: SimBomb)
 signal extra_collected(player_id: int, type: int)
 signal player_died(player_id: int, killer_id: int)
+signal player_falling(player_id: int)
 signal sudden_death_started
 signal tile_vanishing(cell: Vector2i)
 signal tile_vanished(cell: Vector2i)
@@ -87,9 +88,9 @@ func bomb_at(cell: Vector2i) -> SimBomb:
 
 func place_bomb(player_id: int) -> SimBomb:
 	var player: SimPlayer = players.get(player_id)
-	if player == null or not player.can_place_bomb():
+	if player == null or not player.can_place_bomb() or player.is_falling():
 		return null
-	if board.is_blocking(player.cell) or bomb_at(player.cell) != null:
+	if board.is_blocking(player.cell) or SimTile.is_hole(board.get_tile(player.cell)) or bomb_at(player.cell) != null:
 		return null
 	var bomb := SimBomb.new()
 	bomb.id = _next_bomb_id
@@ -106,7 +107,7 @@ func place_bomb(player_id: int) -> SimBomb:
 # Bomben-Taste: Mit Handschuh und stehend wird eine Bombe auf der eigenen Zelle geworfen, sonst eine gelegt.
 func action_bomb(player_id: int) -> SimBomb:
 	var player: SimPlayer = players.get(player_id)
-	if player == null or not player.alive:
+	if player == null or not player.alive or player.is_falling():
 		return null
 	var under := bomb_at(player.cell)
 	if under != null:
@@ -152,6 +153,7 @@ func tick(dt_ms: int) -> void:
 	_update_sudden_death(dt_ms)
 	_move_players(dt_ms)
 	_slide_on_ice(dt_ms)
+	_update_falling(dt_ms)
 	_move_bombs(dt_ms)
 	_collect_extras()
 	_update_diseases(dt_ms)
@@ -410,7 +412,7 @@ func _spawn_extra_on_free_cell(type: int) -> void:
 	for y in board.height:
 		for x in board.width:
 			var cell := Vector2i(x, y)
-			if not board.is_blocking(cell) and not extras.has(cell) and bomb_at(cell) == null:
+			if not board.is_blocking(cell) and not SimTile.is_hole(board.get_tile(cell)) and not extras.has(cell) and bomb_at(cell) == null:
 				free.append(cell)
 	if free.is_empty():
 		return
@@ -502,7 +504,6 @@ func _update_sudden_death(dt_ms: int) -> void:
 			vanishing.erase(cell)
 			board.set_tile(cell, SimTile.Type.NONE)
 			tile_vanished.emit(cell)
-	_update_falling(dt_ms)
 
 
 # Mauern werden zu Boden, Boxen zerbrechen (mit Drop), alles andere verschwindet nach 1 s und wird zum Loch.
@@ -543,24 +544,33 @@ func random_vanishable_cell() -> Vector2i:
 func _update_falling(dt_ms: int) -> void:
 	for id in players:
 		var player: SimPlayer = players[id]
-		if not player.alive or board.get_tile(player.cell) != SimTile.Type.NONE:
+		if not player.alive:
 			continue
-		player.fall_ms = SimConstants.FALL_MS if player.fall_ms < 0 else player.fall_ms - dt_ms
+		var tile := board.get_tile(player.cell) if board.in_bounds(player.cell) else SimTile.Type.NONE
+		if not SimTile.is_hole(tile):
+			continue
+		var is_first := player.fall_ms < 0
+		player.fall_ms = SimConstants.FALL_MS if is_first else player.fall_ms - dt_ms
+		if is_first:
+			player_falling.emit(player.id)
 		if player.fall_ms <= 0:
 			player.alive = false
 			_drop_collected_extras(player)
 			player_died.emit(player.id, -1)
 	for bomb in bombs.duplicate():
-		if not bomb.flying and board.get_tile(bomb.cell) == SimTile.Type.NONE:
-			_remove_bomb(bomb)
+		if not bomb.flying:
+			var tile := board.get_tile(bomb.cell) if board.in_bounds(bomb.cell) else SimTile.Type.NONE
+			if SimTile.is_hole(tile):
+				_remove_bomb(bomb)
 
 
 func _random_passable_cell() -> Vector2i:
 	var free: Array[Vector2i] = []
 	for y in board.height:
 		for x in board.width:
-			if not board.is_blocking(Vector2i(x, y)):
-				free.append(Vector2i(x, y))
+			var cell := Vector2i(x, y)
+			if not board.is_blocking(cell) and not SimTile.is_hole(board.get_tile(cell)):
+				free.append(cell)
 	if free.is_empty():
 		return Vector2i(-1, -1)
 	return free[rng.randi() % free.size()]

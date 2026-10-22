@@ -105,7 +105,10 @@ static func blast_cells(world: SimWorld, origin: Vector2i, power: int) -> Array[
 func _walkable(world: SimWorld, cell: Vector2i, own_cell: Vector2i) -> bool:
 	if not world.board.in_bounds(cell) or world.board.is_blocking(cell):
 		return false
-	if world.board.get_tile(cell) == SimTile.Type.TRAP:
+	var tile := world.board.get_tile(cell)
+	if SimTile.is_hole(tile):
+		return false
+	if tile == SimTile.Type.TRAP:
 		return false
 	if world.extras.has(cell) and not _is_good_extra(world, cell):
 		return false

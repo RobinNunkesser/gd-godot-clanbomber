@@ -149,3 +149,32 @@ func test_trap_target_is_passable_and_owner_gets_slot_back() -> void:
 	assert_bool(world.board.is_blocking(Vector2i(bomb.trap_to / CELL))).is_false()
 	_run(world, 8000)
 	assert_int(owner.active_bombs).is_equal(0)
+
+
+func test_player_walks_into_hole_and_dies() -> void:
+	var world := _world()
+	world.board.set_tile(Vector2i(4, 2), SimTile.Type.HOLE)
+	var player := world.add_player(1, Vector2i(3, 2))
+	var falling_events: Array[int] = []
+	world.player_falling.connect(func(pid: int) -> void: falling_events.append(pid))
+	world.set_move_dir(1, Vector2i.RIGHT)
+	_run(world, 500)
+	assert_bool(player.is_falling()).is_true()
+	assert_array(falling_events).contains([1])
+	_run(world, 1010)
+	assert_bool(player.alive).is_false()
+
+
+func test_player_walks_into_none_and_dies() -> void:
+	var world := _world()
+	world.board.set_tile(Vector2i(4, 2), SimTile.Type.NONE)
+	var player := world.add_player(1, Vector2i(3, 2))
+	var falling_events: Array[int] = []
+	world.player_falling.connect(func(pid: int) -> void: falling_events.append(pid))
+	world.set_move_dir(1, Vector2i.RIGHT)
+	_run(world, 500)
+	assert_bool(player.is_falling()).is_true()
+	assert_array(falling_events).contains([1])
+	_run(world, 1010)
+	assert_bool(player.alive).is_false()
+

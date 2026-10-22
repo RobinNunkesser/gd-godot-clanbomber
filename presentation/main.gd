@@ -220,6 +220,9 @@ func _on_player_died(player_id: int, _killer_id: int) -> void:
 
 func _connect_sounds() -> void:
 	_world.player_died.connect(_on_player_died)
+	_world.player_falling.connect(func(id: int) -> void:
+		banner.text = "Spieler %d stürzt ab!" % id
+		sfx.play("death", -2.0))
 	_world.bomb_placed.connect(func(_b: SimBomb) -> void: sfx.play("bomb_place", -4.0))
 	_world.bomb_exploded.connect(func(_b: SimBomb, _e: SimExplosion) -> void: sfx.play("explosion"))
 	_world.box_destroyed.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -6.0))
