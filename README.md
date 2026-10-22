@@ -21,22 +21,24 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` (Extras) | Aufnahme per Betreten, Obergrenzen, Heilen durch jede Aufnahme (Krankheits-Extra taucht neu auf), Overdrive/Reverse/Autobomb (10 s), Ansteckung, Extras fallen beim Tod |
 | `sim_bomb.gd`, `sim_movement.gd` | Kick (Bombe rollt mit 160 px/s bis zum Hindernis und schnappt ein), Wurf mit Glove (4 Zellen, Zünder steht während des Flugs, Wände und Boxen halten an, auf besetzter Landezelle eine Zelle weiter) |
 | `sim_world.gd` (Kacheln) | Ice: Figuren rutschen mit 80 px/s in Blickrichtung weiter, gerollte Bomben werden schneller. Arrow: schiebt Bomben in Pfeilrichtung, entgegenkommende Bomben werden 0,5 s gehalten und umgelenkt. Trap: hält Bomben 1 s, dann Flug (200 px/s, über Wände) auf ein zufälliges freies Feld, dort Zünder 10 ms |
-| `sim_match.gd` | Rundenverwaltung: Rundenende (höchstens 1 Überlebender, keine Explosion, niemand fällt), +1 Punkt je Überlebendem, Kills, Ranking, Matchsieg bei 5 Punkten; beliebige Spielerzahl |
-| `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Nach 90 s fliegt der Observer (500 px/s) zu zufälligen Feldern (erster Flug nur Ansage). Boden wird 1 s kleiner, dann Loch; Mauer wird Boden, Box zerbricht mit Drop; Extras weichen aus. Figuren auf einem Loch stürzen 1 s und sterben (ohne Killer), Bomben verschwinden ohne Detonation |
-| `sim_ai.gd` | Einfache Heuristik-AI (deterministisch): flieht aus Gefahrenzonen (zeitlich bewertet, inkl. Kettenreaktionen), legt Bomben nur mit Fluchtweg, sprengt Boxen, jagt Gegner, sammelt gute Extras. Ignoriert Kick, Glove, Ice, Arrow, Trap und Krankheits-Extras; wartet oft passiv, daher enden manche Runden erst im Sudden Death |
-| `game_config.gd` | Matcheinstellungen: 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI), Karte oder Zufall, Punkte zum Sieg (1-10) |
+| `map_catalog.gd`, `map_rotation.gd` | Kartenkatalog mit Filter nach Startplätzen (`is_playable`, `playable`) und Turnier-Rotation (Shuffle-Bag über ausgewählten Karten-Pool) |
+| `sim_match.gd` | Runden- und Teamverwaltung: Rundenende (höchstens eine überlebende Partei), Teampunkte, Siegesbedingung (Einzelspieler: Punkte zum Sieg; Team: `team_points >= team_size * points_to_win`), Ranking |
+| `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Einstellbare Rundenzeit (15–300 s, Standard 90 s): Observer fliegt zu zufälligen Feldern, Boden wird zu Löchern, Mauern zu Boden, Boxen zerbrechen |
+| `sim_ai.gd` | Heuristik-AI: flieht aus Gefahrenzonen, legt Bomben nur mit Fluchtweg, sprengt Boxen, jagt Gegner (ignoriert Teamkameraden), sammelt Extras |
+| `game_config.gd` | Matcheinstellungen mit Persistenz: 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI), eigene Spielernamen, Teams (Blood, Gold, Water, Leaf), Kartenfilter & Turnier-Pool, Sudden Death Zeit, Punkte (1-10) und Audio-Lautstärken |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
-Noch nicht enthalten: Musik, Tastenbelegung ändern, mehr als 4 Spieler im Menü.
+## Spiel starten & Steuerung
 
-## Spielbarer Prototyp (2D-Platzhalter)
-
-Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `scenes/main.tscn` lädt eine Karte aus `maps/` und zeichnet den Zustand des Simulationskerns (`presentation/`).
+Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `scenes/main.tscn` startet direkt im Hauptmenü bzw. Spiel.
 
 | Taste | Aktion |
 |---|---|
-| Menü: ↑↓ ←→, Enter / Leertaste / Gamepad A | Steuerung je Platz, Karte, Punkte, Musik- & Effekte-Lautstärke wählen |
-| Esc / Gamepad Start | Menü öffnen / Pause / Weiterspielen (oder Spiel beenden) |
+| Menü: ↑↓ ←→, Enter / Leertaste / Gamepad A | Navigation, Werte anpassen, Submenüs ("Namen & Teams", "Kartenauswahl") öffnen |
+| Menü: Esc / Gamepad B / Back | Zurück ins Hauptmenü / Spiel fortsetzen |
+| Menü: Beenden | Spiel beenden (`get_tree().quit()`) |
+| Esc / Gamepad Start | Spiel pausieren / Hauptmenü öffnen |
+| Sieger-Bildschirm: ↑↓, Enter / A | "Neues Match" oder "Zurück zum Menü" wählen |
 | Tastatur 1: WASD, Leertaste | bewegen, Bombe legen |
 | Tastatur 2: Pfeiltasten, Enter | bewegen, Bombe legen |
 | Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-4 im Menü zuordnen) |

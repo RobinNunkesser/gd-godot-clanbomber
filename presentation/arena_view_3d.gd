@@ -248,7 +248,11 @@ func _make_player(id: int) -> Node3D:
 	torus.bottom_radius = 0.42
 	torus.height = 0.02
 	ring.mesh = torus
-	ring.material_override = _material(PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()])
+	var ring_color: Color = PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()]
+	var team: int = world.players[id].team if world != null and world.players.has(id) else 0
+	if team > 0:
+		ring_color = GameConfig.TEAM_COLORS[team - 1]
+	ring.material_override = _material(ring_color)
 	ring.position = Vector3(0, 0.02, 0)
 	root.add_child(ring)
 	var tag := Label3D.new()

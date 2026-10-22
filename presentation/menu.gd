@@ -1,29 +1,38 @@
 class_name GameMenu
 extends PanelContainer
-## Start- und Pausemenü: Steuerung je Spielerplatz, Karte, Punkte, Hilfe und Beenden.
-## Bedienung mit Pfeiltasten/D-Pad, Enter/Leertaste/Gamepad A, Esc zum Weiterspielen.
+## Start- und Pausemenü: Steuerung je Spielerplatz, Karte, Kartenauswahl (Turnier), Punkte, Sudden-Death-Zeit,
+## Lautstärken, Namen & Teams, Hilfe und Beenden.
+## Bedienung mit Pfeiltasten/D-Pad, Enter/Leertaste/Gamepad A; Esc/B geht zurück (siehe back()).
 
 signal start_requested
 signal resume_requested
 signal audio_changed
+signal quit_requested
 
-const ROW_MAP := GameConfig.SLOT_COUNT
-const ROW_POINTS := GameConfig.SLOT_COUNT + 1
-const ROW_MUSIC := GameConfig.SLOT_COUNT + 2
-const ROW_SFX := GameConfig.SLOT_COUNT + 3
+enum Mode { MAIN, HELP, PLAYERS, MAPS }
+
+const VISIBLE_MAP_ROWS := 12
+# Im Kartenauswahl-Untermenü stehen vor der Kartenliste zwei Aktionszeilen.
+const MAP_ROW_ALL := 0
+const MAP_ROW_NONE := 1
+const MAP_ROWS_BEFORE_LIST := 2
 
 var config := GameConfig.new()
-var maps: Array[String] = []
+var catalog := MapCatalog.new()
 var is_game_active := false
 
+var _mode := Mode.MAIN
 var _row := 0
-var _show_help := false
+var _return_row := 0
+var _map_scroll := 0
+var _editing := false
+var _edit_text := ""
 var _text := RichTextLabel.new()
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	custom_minimum_size = Vector2(680, 0)
+	custom_minimum_size = Vector2(700, 0)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
 	focus_mode = Control.FOCUS_NONE
@@ -31,16 +40,18 @@ func _ready() -> void:
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.scroll_active = false
-	_text.add_theme_font_size_override("normal_font_size", 22)
-	_text.add_theme_font_size_override("bold_font_size", 30)
+	_text.add_theme_font_size_override("normal_font_size", 20)
+	_text.add_theme_font_size_override("bold_font_size", 28)
 	add_child(_text)
 	visible = false
 
 
 func open() -> void:
 	visible = true
-	_show_help = false
-	_row = _row_resume() if is_game_active else _row_start()
+	_mode = Mode.MAIN
+	_editing = false
+	_normalize_map()
+	_row = _row_index("resume" if is_game_active else "start")
 	_render()
 
 
@@ -50,48 +61,113 @@ func resume() -> void:
 		resume_requested.emit()
 
 
-func _row_resume() -> int:
-	return GameConfig.SLOT_COUNT + 4 if is_game_active else -1
+# Esc/B: erst Namenseingabe abbrechen, dann Untermenü/Hilfe schließen. true = Eingabe verbraucht.
+func back() -> bool:
+	if _editing:
+		_editing = false
+		_render()
+		return true
+	if _mode != Mode.MAIN:
+		_mode = Mode.MAIN
+		_row = _return_row
+		_normalize_map()
+		_render()
+		return true
+	return false
 
 
-func _row_start() -> int:
-	return GameConfig.SLOT_COUNT + 5 if is_game_active else GameConfig.SLOT_COUNT + 4
+# --- Zeilenmodell des Hauptmenüs ---
+
+func _main_rows() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	var pads := Input.get_connected_joypads()
+	for slot in GameConfig.SLOT_COUNT:
+		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
+		var value := _value_text(config.slots[slot], pads)
+		var team := config.effective_team(slot)
+		if team > 0:
+			value += "   [color=#%s]%s[/color]" % [GameConfig.TEAM_COLORS[team - 1].to_html(false), GameConfig.team_label(team)]
+		rows.append({"id": "slot%d" % slot, "label": "[color=#%s]%s[/color]" % [color.to_html(false), config.name_of(slot)],
+			"value": value, "adjustable": true})
+	rows.append({"id": "players", "label": "Namen & Teams …", "value": "", "adjustable": false, "gap": true})
+	var playable := catalog.playable(config.active_slots())
+	var map_text := "Zufall (Turnier)"
+	if not config.is_random_map():
+		map_text = "%s · %d Plätze" % [config.map_name.get_basename(), catalog.start_count(config.map_name)]
+	rows.append({"id": "map", "label": "Karte", "value": map_text, "adjustable": true})
+	rows.append({"id": "pool", "label": "Kartenauswahl für Turnier …",
+		"value": "%d von %d Karten" % [config.effective_pool(playable).size(), playable.size()], "adjustable": false})
+	rows.append({"id": "points", "label": "Punkte zum Sieg", "value": str(config.points_to_win), "adjustable": true, "gap": true})
+	rows.append({"id": "time", "label": "Sudden Death nach", "value": "%d s" % config.round_time_s, "adjustable": true})
+	rows.append({"id": "music", "label": "Musik", "value": config.music_label(), "adjustable": true, "gap": true})
+	rows.append({"id": "sfx", "label": "Ton-Effekte", "value": config.sfx_label(), "adjustable": true})
+	if is_game_active:
+		rows.append({"id": "resume", "label": "[b]Weiterspielen (Resume)[/b]", "value": "", "adjustable": false, "gap": true})
+		rows.append({"id": "start", "label": "[b]Neues Match starten[/b]", "value": "", "adjustable": false})
+	else:
+		var label := "[b]Start[/b]"
+		var blocker := _start_blocker()
+		if not blocker.is_empty():
+			label += " [color=#ff8a80](%s)[/color]" % blocker
+		rows.append({"id": "start", "label": label, "value": "", "adjustable": false, "gap": true})
+	rows.append({"id": "help", "label": "Steuerung & Hilfe", "value": "", "adjustable": false})
+	rows.append({"id": "quit", "label": "Spiel beenden", "value": "", "adjustable": false})
+	return rows
 
 
-func _row_help() -> int:
-	return GameConfig.SLOT_COUNT + 6 if is_game_active else GameConfig.SLOT_COUNT + 5
+func _row_index(id: String) -> int:
+	var rows := _main_rows()
+	for i in rows.size():
+		if rows[i].id == id:
+			return i
+	return 0
 
 
-func _row_quit() -> int:
-	return GameConfig.SLOT_COUNT + 7 if is_game_active else GameConfig.SLOT_COUNT + 6
+func _row_id() -> String:
+	var rows := _main_rows()
+	return rows[clampi(_row, 0, rows.size() - 1)].id
 
 
 func _row_count() -> int:
-	return GameConfig.SLOT_COUNT + (6 if is_game_active else 5)
+	match _mode:
+		Mode.PLAYERS:
+			return GameConfig.SLOT_COUNT * 2
+		Mode.MAPS:
+			return MAP_ROWS_BEFORE_LIST + catalog.names.size()
+	return _main_rows().size()
 
+
+# Warum man (noch) nicht starten kann; leer = alles in Ordnung.
+func _start_blocker() -> String:
+	if not config.is_startable():
+		return "mindestens 2 Gegner nötig"
+	if catalog.playable(config.active_slots()).is_empty():
+		return "keine Karte für diese Spielerplätze"
+	return ""
+
+
+# Gibt es die aktuelle Karte für die Spielerplätze nicht (mehr), wechselt die Auswahl auf Zufall.
+func _normalize_map() -> void:
+	if not config.is_random_map() and not catalog.is_playable(config.map_name, config.active_slots()):
+		config.map_name = ""
+
+
+# --- Eingabe ---
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
-	if _show_help:
-		if event.is_pressed():
-			_show_help = false
+	if _mode == Mode.HELP:
+		if event.is_pressed() and not event.is_echo():
+			_mode = Mode.MAIN
 			get_viewport().set_input_as_handled()
 			_render()
 		return
-
-	var key := event as InputEventKey
-	var key_code := 0
-	if key != null:
-		key_code = key.physical_keycode if key.keycode == 0 else key.keycode
-
-	if event.is_action_pressed("ui_cancel") or (key != null and not key.echo and key.pressed and key_code == KEY_ESCAPE):
-		if is_game_active:
-			visible = false
+	if _editing:
+		if _handle_edit_input(event):
 			get_viewport().set_input_as_handled()
-			resume_requested.emit()
-			return
-
+			_render()
+		return
 	if event.is_action_pressed("ui_up"):
 		_row = posmod(_row - 1, _row_count())
 	elif event.is_action_pressed("ui_down"):
@@ -104,69 +180,189 @@ func _unhandled_input(event: InputEvent) -> void:
 		_accept()
 	else:
 		return
-
 	get_viewport().set_input_as_handled()
 	_render()
 
 
+func _handle_edit_input(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed:
+		return false
+	var code := key.physical_keycode if key.keycode == 0 else key.keycode
+	if code == KEY_ENTER or code == KEY_KP_ENTER:
+		if key.echo:
+			return false
+		config.set_name(floori(_row / 2.0), _edit_text)
+		_editing = false
+	elif code == KEY_BACKSPACE:
+		_edit_text = _edit_text.left(_edit_text.length() - 1)
+	elif key.unicode >= 32 and key.unicode != 127:
+		var typed := char(key.unicode)
+		if typed != "[" and typed != "]" and _edit_text.length() < GameConfig.NAME_MAX_LENGTH:
+			_edit_text += typed
+	else:
+		return false
+	return true
+
+
 func _change(step: int) -> void:
-	if _row < GameConfig.SLOT_COUNT:
-		config.cycle_slot(_row, step)
-	elif _row == ROW_MAP:
-		config.cycle_map(maps, step)
-	elif _row == ROW_POINTS:
+	if _mode == Mode.PLAYERS:
+		if _row % 2 == 1:
+			config.cycle_team(floori(_row / 2.0), step)
+		return
+	if _mode != Mode.MAIN:
+		return
+	var id := _row_id()
+	if id.begins_with("slot"):
+		config.cycle_slot(id.trim_prefix("slot").to_int(), step)
+		_normalize_map()
+	elif id == "map":
+		config.cycle_map(catalog.playable(config.active_slots()), step)
+	elif id == "points":
 		config.cycle_points(step)
-	elif _row == ROW_MUSIC:
+	elif id == "time":
+		config.cycle_round_time(step)
+	elif id == "music":
 		config.cycle_music(step)
 		audio_changed.emit()
-	elif _row == ROW_SFX:
+	elif id == "sfx":
 		config.cycle_sfx(step)
 		audio_changed.emit()
 
 
 func _accept() -> void:
-	if _row == _row_resume():
-		resume()
-	elif _row == _row_start():
-		if config.is_startable():
-			visible = false
-			start_requested.emit()
-	elif _row == _row_help():
-		_show_help = true
-	elif _row == _row_quit():
-		get_tree().quit()
-	elif _row == ROW_MUSIC or _row == ROW_SFX or _row == ROW_MAP or _row == ROW_POINTS:
-		_change(1)
-	else:
-		_change(1)
+	match _mode:
+		Mode.PLAYERS:
+			if _row % 2 == 0:
+				_editing = true
+				_edit_text = config.names[floori(_row / 2.0)]
+			else:
+				_change(1)
+		Mode.MAPS:
+			_accept_map_row()
+		_:
+			_accept_main_row()
 
+
+func _accept_main_row() -> void:
+	var id := _row_id()
+	match id:
+		"resume":
+			resume()
+		"start":
+			if _start_blocker().is_empty():
+				visible = false
+				start_requested.emit()
+		"help":
+			_mode = Mode.HELP
+		"quit":
+			quit_requested.emit()
+		"players":
+			_enter_submenu(Mode.PLAYERS)
+		"pool":
+			_enter_submenu(Mode.MAPS)
+			_map_scroll = 0
+		_:
+			_change(1)
+
+
+func _enter_submenu(mode: Mode) -> void:
+	_return_row = _row
+	_mode = mode
+	_row = 0
+
+
+func _accept_map_row() -> void:
+	var playable := catalog.playable(config.active_slots())
+	if _row == MAP_ROW_ALL:
+		for map in playable:
+			if not config.is_in_pool(map):
+				config.map_pool.append(map)
+	elif _row == MAP_ROW_NONE:
+		config.map_pool.clear()
+	else:
+		var map := catalog.names[_row - MAP_ROWS_BEFORE_LIST]
+		if playable.has(map):
+			config.toggle_pool(map)
+
+
+# --- Darstellung ---
 
 func _render() -> void:
-	if _show_help:
-		_render_help()
-		return
+	match _mode:
+		Mode.HELP:
+			_render_help()
+		Mode.PLAYERS:
+			_render_players()
+		Mode.MAPS:
+			_render_maps()
+		_:
+			_render_main()
+
+
+func _render_main() -> void:
 	var lines: Array[String] = ["[center][b]ClanBomber[/b][/center]", ""]
-	var pads := Input.get_connected_joypads()
-	for slot in GameConfig.SLOT_COUNT:
-		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
-		var value := _value_text(config.slots[slot], pads)
-		lines.append(_row_line(slot, "[color=#%s]Spieler %d[/color]" % [color.to_html(false), slot + 1], value))
-	var map_text := "Zufall" if config.is_random_map() else config.map_name.get_basename()
-	lines.append(_row_line(ROW_MAP, "Karte", map_text))
-	lines.append(_row_line(ROW_POINTS, "Punkte zum Sieg", str(config.points_to_win)))
-	lines.append(_row_line(ROW_MUSIC, "Musik", config.music_label()))
-	lines.append(_row_line(ROW_SFX, "Ton-Effekte", config.sfx_label()))
-	lines.append("")
-	if is_game_active:
-		lines.append(_row_line(_row_resume(), "[b]Weiterspielen (Resume)[/b]", ""))
-		lines.append(_row_line(_row_start(), "[b]Neues Match starten[/b]", ""))
-	else:
-		var start := "Start" if config.is_startable() else "Start (mindestens 2 Spieler nötig)"
-		lines.append(_row_line(_row_start(), "[b]%s[/b]" % start, ""))
-	lines.append(_row_line(_row_help(), "Steuerung & Hilfe", ""))
-	lines.append(_row_line(_row_quit(), "Spiel beenden", ""))
+	var rows := _main_rows()
+	for i in rows.size():
+		var row: Dictionary = rows[i]
+		if row.get("gap", false):
+			lines.append("")
+		lines.append(_row_line(i, row.label, row.value, row.adjustable))
 	lines.append("")
 	lines.append("[center][color=#aaaaaa]↑↓ wählen, ←→ ändern, Enter / Leertaste / Gamepad A bestätigen[/color][/center]")
+	_text.text = "\n".join(lines)
+
+
+func _render_players() -> void:
+	var lines: Array[String] = ["[center][b]Namen & Teams[/b][/center]", ""]
+	for slot in GameConfig.SLOT_COUNT:
+		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
+		lines.append("[color=#%s][b]Platz %d[/b][/color]  [color=#888888](%s)[/color]" % [
+			color.to_html(false), slot + 1, GameConfig.NAMES[config.slots[slot]]])
+		var name_text := config.name_of(slot)
+		if _editing and floori(_row / 2.0) == slot:
+			name_text = "[color=#ffdd44]%s█[/color]" % _edit_text
+		lines.append(_row_line(slot * 2, "Name", name_text, false))
+		var team := config.teams[slot]
+		var team_text := GameConfig.team_label(team)
+		if team > 0:
+			team_text = "[color=#%s]%s[/color]" % [GameConfig.TEAM_COLORS[team - 1].to_html(false), team_text]
+			if config.slots[slot] != GameConfig.Controller.OFF and config.effective_team(slot) == 0:
+				team_text += " [color=#888888](allein, zählt als Einzelspieler)[/color]"
+		lines.append(_row_line(slot * 2 + 1, "Team", team_text, true))
+	lines.append("")
+	var hint := "Name tippen, Enter bestätigt, Esc bricht ab" if _editing else \
+		"Enter: Name ändern, ←→: Team wechseln, Esc / B: zurück"
+	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
+	_text.text = "\n".join(lines)
+
+
+func _render_maps() -> void:
+	var playable := catalog.playable(config.active_slots())
+	var lines: Array[String] = ["[center][b]Kartenauswahl (Turnier)[/b][/center]", ""]
+	lines.append(_row_line(MAP_ROW_ALL, "Alle spielbaren auswählen", "", false))
+	lines.append(_row_line(MAP_ROW_NONE, "Auswahl leeren", "", false))
+	lines.append("")
+	var list_row := _row - MAP_ROWS_BEFORE_LIST
+	if list_row >= 0:
+		if list_row < _map_scroll:
+			_map_scroll = list_row
+		elif list_row >= _map_scroll + VISIBLE_MAP_ROWS:
+			_map_scroll = list_row - VISIBLE_MAP_ROWS + 1
+	var last := mini(_map_scroll + VISIBLE_MAP_ROWS, catalog.names.size())
+	lines.append("[color=#888888]%s[/color]" % ("↑ weitere Karten" if _map_scroll > 0 else " "))
+	for i in range(_map_scroll, last):
+		var map := catalog.names[i]
+		var ok := playable.has(map)
+		var box := "[lb]x]" if config.is_in_pool(map) else "[lb] ]"
+		var label := "%s %s · %d Plätze" % [box, map.get_basename(), catalog.start_count(map)]
+		if not ok:
+			label = "[color=#666666]%s (zu wenige Startplätze)[/color]" % label
+		lines.append(_row_line(MAP_ROWS_BEFORE_LIST + i, label, "", false))
+	lines.append("[color=#888888]%s[/color]" % ("↓ weitere Karten" if last < catalog.names.size() else " "))
+	lines.append("")
+	var selected := config.effective_pool(playable).size()
+	lines.append("[center][color=#aaaaaa]%d Karten im Turnier · Enter: an/aus · Esc / B: zurück[/color][/center]" % selected)
 	_text.text = "\n".join(lines)
 
 
@@ -187,14 +383,21 @@ func _render_help() -> void:
 		"  [b]R[/b]          Aktuelle Runde neu starten",
 		"  [b]F5[/b]         Neues Match starten (Punkte zurücksetzen)",
 		"",
+		"[color=#ffaaee][b]Turnier & Teams:[/b][/color]",
+		"  Karte [b]Zufall[/b] spielt die Kartenauswahl in gemischter Reihenfolge, jede Karte einmal pro Durchgang.",
+		"  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.",
+		"",
 		"[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center]"
 	]
 	_text.text = "\n".join(lines)
 
 
-func _row_line(row: int, label: String, value: String) -> String:
+func _row_line(row: int, label: String, value: String, adjustable: bool) -> String:
 	var marker := "▶ " if row == _row else "   "
-	return "%s%s    %s" % [marker, label, "◀ %s ▶" % value if value != "" and row == _row else value]
+	var shown := value
+	if adjustable and value != "" and row == _row:
+		shown = "◀ %s ▶" % value
+	return "%s%s    %s" % [marker, label, shown]
 
 
 func _value_text(controller: int, pads: Array[int]) -> String:

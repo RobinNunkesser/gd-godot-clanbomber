@@ -50,9 +50,10 @@ func _init(p_board: SimBoard, p_rng: RandomNumberGenerator = null) -> void:
 	rng = p_rng
 
 
-func add_player(id: int, cell: Vector2i) -> SimPlayer:
+func add_player(id: int, cell: Vector2i, team := 0) -> SimPlayer:
 	var player := SimPlayer.new()
 	player.id = id
+	player.team = team
 	player.cell = cell
 	players[id] = player
 	return player
@@ -76,6 +77,19 @@ func is_other_player_in(cell: Vector2i, except_id: int) -> bool:
 		var other: SimPlayer = players[id]
 		if id != except_id and other.alive and other.cell == cell:
 			return true
+	return false
+
+
+# Steht in `cell` ein lebender Gegner von `own_id`? Teamkollegen (gleiches Team > 0) zählen nicht.
+func is_enemy_in(cell: Vector2i, own_id: int) -> bool:
+	var own: SimPlayer = players.get(own_id)
+	for id in players:
+		var other: SimPlayer = players[id]
+		if id == own_id or not other.alive or other.cell != cell:
+			continue
+		if own != null and own.team > 0 and other.team == own.team:
+			continue
+		return true
 	return false
 
 

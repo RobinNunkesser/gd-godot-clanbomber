@@ -2,6 +2,8 @@ class_name SimPlayer
 extends RefCounted
 
 var id := 0
+# 0 = kein Team (Einzelspieler), 1-4 = Team. Mitglieder eines Teams gewinnen und verlieren gemeinsam.
+var team := 0
 # Obere linke Ecke der 40×40-Figur in ganzzahligen Pixeln (Raster-Pixelkoordinaten).
 var pos := Vector2i.ZERO
 # Zelle durch Rundung zur Zellmitte: floor((pos + 20) / 40). Setzen zentriert die Figur auf der Zelle.

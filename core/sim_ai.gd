@@ -166,7 +166,7 @@ func _bomb_is_useful(world: SimWorld, player: SimPlayer, cell: Vector2i) -> bool
 				if SimTile.is_destructible(world.board.get_tile(target)):
 					return true
 				break
-			if world.is_other_player_in(target, player_id):
+			if world.is_enemy_in(target, player_id):
 				return true
 	return false
 

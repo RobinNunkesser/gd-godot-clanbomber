@@ -5,6 +5,7 @@ extends Node2D
 ## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match, M: Mute.
 
 const MAP_DIR := "res://maps"
+const SETTINGS_PATH := "user://settings.cfg"
 const PAD_DEADZONE := 0.5
 const CONTINUE_LOCK_MS := 800
 
@@ -13,8 +14,10 @@ const CONTINUE_LOCK_MS := 800
 @onready var hud: Label = $UI/Hud
 @onready var banner: Label = $UI/Banner
 
-var _maps: Array[String] = []
-var _map_index := 0
+var _catalog := MapCatalog.new()
+var _rotation := MapRotation.new()
+var _rng := RandomNumberGenerator.new()
+var _current_map := ""
 var _world: SimWorld
 var _clock_ms := 0.0
 var _match := SimMatch.new()
@@ -33,17 +36,17 @@ func _ready() -> void:
 	add_child(_bgm)
 	_menu_music = _load_looping_stream("res://assets/audio/music/music_menu.ogg")
 	_game_music = _load_looping_stream("res://assets/audio/music/music_game.ogg")
-	for file in DirAccess.get_files_at(MAP_DIR):
-		if file.ends_with(".map"):
-			_maps.append(file)
-	_maps.sort()
-	var start := _maps.find("Crossroads.map")
-	_map_index = maxi(start, 0)
+	_rng.randomize()
+	_catalog = MapCatalog.load_dir(MAP_DIR)
+	_menu.catalog = _catalog
+	_menu.config.load_from(SETTINGS_PATH, _catalog.names)
+	if _menu.config.map_pool.is_empty():
+		_menu.config.map_pool = _catalog.names.duplicate()
 	$UI.add_child(_scoreboard)
 	$UI.add_child(_menu)
-	_menu.maps = _maps
 	_menu.start_requested.connect(_start_match)
 	_menu.resume_requested.connect(_resume_game)
+	_menu.quit_requested.connect(_quit_game)
 	_menu.audio_changed.connect(_apply_audio_config)
 	_apply_audio_config()
 	_open_menu()
@@ -98,50 +101,86 @@ func _open_menu() -> void:
 
 
 func _resume_game() -> void:
+	_menu.config.save_to(SETTINGS_PATH)
 	_play_music(_game_music, -10.0)
 
 
-# Lädt die Karte `step` Positionen weiter und überspringt Karten, die für die Spielerzahl nicht taugen.
+func _quit_game() -> void:
+	_menu.config.save_to(SETTINGS_PATH)
+	get_tree().quit()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_menu.config.save_to(SETTINGS_PATH)
+
+
+# Anzeigenamen der Spieler (Spieler-ID = Platz + 1).
+func _names() -> Dictionary:
+	var result: Dictionary = {}
+	for slot in GameConfig.SLOT_COUNT:
+		result[slot + 1] = _menu.config.name_of(slot)
+	return result
+
+
+func _player_name(id: int) -> String:
+	return _menu.config.name_of(id - 1)
+
+
+# Lädt die nächste Karte. Bei fester Karte schalten N/P (step +-1) durch alle für die Spielerplätze spielbaren
+# Karten, step 0 lädt dieselbe Karte neu. Bei "Zufall" (Turnier) zieht jeder Schritt != 0 die nächste Karte der
+# gemischten Kartenauswahl; step 0 startet nur die Runde neu.
 func _load_map(step: int) -> void:
 	if _match.state == SimMatch.State.MATCH_OVER:
 		_match.reset()
 	_match.start_next_round()
 	_scoreboard.visible = false
-	if _menu.config.is_random_map() and step != 0:
-		_map_index = randi() % _maps.size()
-		step = 0
-	for attempt in _maps.size():
-		_map_index = posmod(_map_index + step, _maps.size())
-		if _try_load_current_map():
-			return
-		step = step if step != 0 else 1
-	banner.text = "Keine passende Karte gefunden"
+	var config := _menu.config
+	var playable := _catalog.playable(config.active_slots())
+	if playable.is_empty():
+		banner.text = "Keine passende Karte gefunden"
+		return
+	var map_name := _current_map
+	if config.is_random_map():
+		if step != 0 or not playable.has(map_name):
+			map_name = _rotation.next(config.effective_pool(playable), _rng)
+	else:
+		var index := playable.find(map_name)
+		if index < 0:
+			index = maxi(playable.find(config.map_name), 0)
+			step = 0
+		map_name = playable[posmod(index + step, playable.size())]
+	if not _try_load_map(map_name):
+		banner.text = "Karte %s konnte nicht geladen werden" % map_name
 
 
-func _try_load_current_map() -> bool:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var text := FileAccess.get_file_as_string("%s/%s" % [MAP_DIR, _maps[_map_index]])
-	var data := MapParser.parse(text, rng)
+func _try_load_map(map_name: String) -> bool:
+	var text := FileAccess.get_file_as_string("%s/%s" % [MAP_DIR, map_name])
+	var data := MapParser.parse(text, _rng)
 	if not data.is_valid():
 		return false
-	var active := _menu.config.active_slots()
+	var config := _menu.config
+	var active := config.active_slots()
 	for slot in active:
 		if not data.starts.has(slot):
 			return false
-	_world = SimWorld.new(SimBoard.from_map(data), rng)
+	_world = SimWorld.new(SimBoard.from_map(data), _rng)
+	_world.round_time_ms = config.round_time_ms()
 	_ais.clear()
 	for slot in active:
-		_world.add_player(slot + 1, data.starts[slot])
-		if _menu.config.slots[slot] == GameConfig.Controller.AI:
+		var team := config.effective_team(slot)
+		_world.add_player(slot + 1, data.starts[slot], team)
+		_match.set_team(slot + 1, team)
+		if config.slots[slot] == GameConfig.Controller.AI:
 			_ais[slot + 1] = SimAI.new(slot + 1)
 	_match.register_players(_world.players.keys())
-	if not _menu.config.is_random_map():
-		_menu.config.map_name = _maps[_map_index]
+	_current_map = map_name
+	if not config.is_random_map():
+		config.map_name = map_name
 	_connect_sounds()
 	view3d.bind(_world)
 	_round_over = false
-	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [N] Nächste Karte  |  [R] Reset" % [_maps[_map_index].get_basename(), data.author]
+	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [N] Nächste Karte  |  [R] Reset" % [map_name.get_basename(), data.author]
 	return true
 
 
@@ -181,10 +220,11 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if _menu.visible:
-			if _menu.is_game_active:
-				_menu.resume()
-			else:
-				get_tree().quit()
+			if not _menu.back():
+				if _menu.is_game_active:
+					_menu.resume()
+				else:
+					_quit_game()
 			get_viewport().set_input_as_handled()
 			return
 		if _world != null:
@@ -237,6 +277,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _handle_scoreboard_input(event: InputEvent) -> void:
+	if _scoreboard.is_match_over():
+		_handle_match_over_input(event)
+		return
 	if event is InputEventKey:
 		var key := event as InputEventKey
 		var code := key.physical_keycode if key.keycode == 0 else key.keycode
@@ -251,18 +294,50 @@ func _handle_scoreboard_input(event: InputEvent) -> void:
 			_continue_after_scoreboard()
 
 
+# Sieger-Bildschirm: ↑↓ wählen zwischen "Neues Match" und "Zurück zum Menü", Leertaste/Enter/A bestätigt.
+func _handle_match_over_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_up"):
+		_scoreboard.move_selection(-1)
+		sfx.play("ui_select", -8.0)
+	elif event.is_action_pressed("ui_down"):
+		_scoreboard.move_selection(1)
+		sfx.play("ui_select", -8.0)
+	elif Time.get_ticks_msec() >= _continue_unlock_at and _is_confirm(event):
+		match _scoreboard.selected_action():
+			Scoreboard.Action.NEW_MATCH:
+				_start_match()
+			Scoreboard.Action.MENU:
+				sfx.play("ui_select")
+				_scoreboard.visible = false
+				_open_menu()
+	elif event is InputEventKey and (event as InputEventKey).physical_keycode == KEY_F5:
+		_start_match()
+
+
+func _is_confirm(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		var code := key.physical_keycode if key.keycode == 0 else key.keycode
+		return code in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if event is InputEventJoypadButton:
+		return (event as InputEventJoypadButton).button_index == JOY_BUTTON_A
+	return false
+
+
 func _continue_after_scoreboard() -> void:
 	sfx.play("ui_select")
 	_load_map(1 if _menu.config.is_random_map() else 0)
 
 
-# Neues Match mit den Menüeinstellungen. Eine feste Karte bleibt über alle Runden gleich.
+# Neues Match mit den Menüeinstellungen. Eine feste Karte bleibt über alle Runden gleich,
+# bei "Zufall" läuft das Turnier durch die gemischte Kartenauswahl.
 func _start_match() -> void:
 	var config := _menu.config
+	config.save_to(SETTINGS_PATH)
 	_menu.is_game_active = true
 	_match = SimMatch.new(config.points_to_win)
-	if not config.is_random_map():
-		_map_index = maxi(_maps.find(config.map_name), 0)
+	_rotation.reset()
+	_current_map = "" if config.is_random_map() else config.map_name
 	_load_map(1 if config.is_random_map() else 0)
 	_play_music(_game_music, -10.0)
 	sfx.play("ui_select")
@@ -311,14 +386,14 @@ func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
 
 
 func _on_player_died(player_id: int, _killer_id: int) -> void:
-	banner.text = "Spieler %d ist tot" % player_id
+	banner.text = "%s ist tot" % _player_name(player_id)
 	sfx.play("death")
 
 
 func _connect_sounds() -> void:
 	_world.player_died.connect(_on_player_died)
 	_world.player_falling.connect(func(id: int) -> void:
-		banner.text = "Spieler %d stürzt ab!" % id
+		banner.text = "%s stürzt ab!" % _player_name(id)
 		sfx.play("death", -2.0))
 	_world.bomb_placed.connect(func(_b: SimBomb) -> void: sfx.play("bomb_place", -4.0))
 	_world.bomb_exploded.connect(func(_b: SimBomb, _e: SimExplosion) -> void: sfx.play("explosion"))
@@ -340,7 +415,7 @@ func _status_text() -> String:
 	var lines: Array[String] = []
 	for id: int in _world.players:
 		var p: SimPlayer = _world.players[id]
-		var line := "P%d ★%d  B%d P%d S%d%s%s" % [id, _match.points_of(id), p.max_bombs, p.power, p.skateboards, " K" if p.can_kick else "", " G" if p.can_glove else ""]
+		var line := "%s ★%d  B%d P%d S%d%s%s" % [_player_name(id).left(8), _match.points_of(id), p.max_bombs, p.power, p.skateboards, " K" if p.can_kick else "", " G" if p.can_glove else ""]
 		if p.is_diseased():
 			line += " [%s %ds]" % [ArenaView3D.EXTRA_LETTERS[p.disease], ceili(p.disease_ms / 1000.0)]
 		if not p.alive:
@@ -356,7 +431,7 @@ func _check_round_end() -> void:
 	_round_over = true
 	_continue_unlock_at = Time.get_ticks_msec() + CONTINUE_LOCK_MS
 	sfx.play("round_end")
-	_scoreboard.show_result(_match)
+	_scoreboard.show_result(_match, _names())
 
 
 # Testhilfe (F1): legt jeden Extra-Typ in eine Reihe neben Spieler 1.

@@ -34,7 +34,7 @@ Hinweise:
 
 ## Fertig
 
-Simulationskern (129 Tests grün):
+Simulationskern & Spielsysteme (165 Tests grün):
 
 | Slice | Inhalt |
 |---|---|
@@ -46,7 +46,8 @@ Simulationskern (129 Tests grün):
 | 6 | Sudden Death (Observer, Löcher, Sturz), Testsuite `sim_sudden_death_test.gd`, 98 Tests grün |
 | 7 | Rundenverwaltung (`SimMatch`: Punkte, Kills, Matchsieg bei 5 Punkten), Scoreboard-Overlay, Kartenwechsel nach jeder Runde, 111 Tests grün |
 | 8 | Einfache AI (`SimAI`, im Menü je Platz wählbar), 122 Tests grün |
-| 9 | Startmenü (`GameMenu`, `GameConfig`): 2-4 Spieler mit Tastatur 1/2, Gamepad 1-4 oder AI, Karte oder Zufall, Punkte zum Sieg; 129 Tests grün. Gamepad-Eingabe nicht mit echter Hardware getestet |
+| 9 | Startmenü (`GameMenu`, `GameConfig`): 2-4 Spieler mit Tastatur 1/2, Gamepad 1-4 oder AI, Karte oder Zufall, Punkte zum Sieg; 129 Tests grün |
+| 10 | Match-System & Menü-Erweiterungen (165 Tests grün):<br>- **Kartenfilter:** Nur Karten im Menü anbieten/durchschalten, die genügend Startplätze für aktive Spieler haben (`MapCatalog`).<br>- **Turnier / Kartenauswahl:** Submenü mit Checkboxen für Karten-Pool, Shuffle-Bag-Rotation ohne direkte Wiederholungen (`MapRotation`).<br>- **Team-Modus:** 4 Teams (Blood, Gold, Water, Leaf), Team-Farbringe, Teampunkte-Durchschnitt und Siegesbedingung `team_points >= team_size * points_to_win` wie im Original.<br>- **Spielernamen:** Submenü zur Vergabe eigener Spielernamen (max. 12 Zeichen), Anzeige in HUD, Bannern und Siegerbildschirm.<br>- **Konfigurierbare Sudden Death Zeit:** Im Menü einstellbar von 15 s bis 300 s (Standard 90 s).<br>- **Match-Sieger-Bildschirm:** Feierlicher Sieger-Banner bei Match-Ende mit Auswahl "Neues Match" oder "Zurück zum Menü".<br>- **Spiel beenden:** Menüpunkt "Beenden" (`get_tree().quit()`). |
 
 Präsentation:
 - 3D-Ansicht (`presentation/arena_view_3d.gd`) mit Kenney-Modellen, 3D-Partikeln und Skybox. (Der frühere 2D-Platzhaltermodus wurde entfernt.)
@@ -87,13 +88,13 @@ Präsentation:
 
 ## Nächste Schritte (Vorschlag, in dieser Reihenfolge)
 
-1. **Spielen und Feedback** zu Slice 4-7, Ton, 3D-Ansicht (Figurengröße, Kamera), Juice-Stärke.
-2. ~~Sudden Death~~ (erledigt, Slice 6).
-3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, das Menü bietet 4 Plätze).
-4. ~~AI~~ (einfache Heuristik erledigt, Slice 8). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden viele Runden passiv erst im Sudden Death. Verbesserung: aktiver auf den Gegner zulaufen, Schwierigkeitsgrade.
-5. **Karten-UI:** Karten mit zu wenigen Startfeldern im Menü ausblenden (bisher nur übersprungen), Anzeigenamen getrennt vom Dateinamen.
-6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad, Steuerungshilfe & Beenden). Gamepad bestätigt. Offen: Tastenbelegung ändern, mehr als 4 Spieler.
-7. **Optik & Audio:** Juice-Stufe 1 erledigt (`effects_3d.gd`), CC0-BGM integriert. Offen: Figuren-Squash/Hit-Stop, Spezialfeld-Decals.
+1. **Spielen und Feedback** zu Slice 4-10, Ton, 3D-Ansicht (Figurengröße, Kamera), Juice-Stärke.
+2. ~~Sudden Death~~ (erledigt, Slice 6; konfigurierbare Zeit in Slice 10).
+3. ~~Rundenverwaltung~~ (erledigt, Slice 7 & 10: Punkte, Teams, Sieger-Bildschirm).
+4. ~~AI~~ (einfache Heuristik erledigt, Slice 8; beachtet Teambildung). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden manche Runden passiv erst im Sudden Death.
+5. ~~Karten-UI & Turnier~~ (erledigt, Slice 10: Filter nach Spielerzahl, Kartenauswahl-Pool mit Rotation).
+6. ~~Menü & Match-System~~ (erledigt, Slice 9 & 10: Spielerzahl, Spielernamen, Teams, Sudden Death Zeit, Beenden, Sieger-Screen).
+7. **Optik & Audio:** Juice-Stufe 1 erledigt (`effects_3d.gd`), CC0-BGM integriert, PBR-Boden/Eis/Pfeil/Fallen-Texturen aktiv.
 8. **Kids-Mode** (Cube Pets).
 
 Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentation, dann README und diese Datei aktualisieren.
