@@ -96,11 +96,24 @@ func _setup_environment() -> void:
 	light.shadow_enabled = true
 	add_child(light)
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("1b1b24")
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.75, 0.75, 0.85)
-	env.ambient_light_energy = 0.7
+	var sky_tex := load("res://assets/textures/sky/sky_clouds.png") as Texture2D
+	if sky_tex != null:
+		var sky_mat := PanoramaSkyMaterial.new()
+		sky_mat.panorama = sky_tex
+		var sky := Sky.new()
+		sky.sky_material = sky_mat
+		env.background_mode = Environment.BG_SKY
+		env.sky = sky
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		env.ambient_light_sky_contribution = 0.5
+		env.ambient_light_energy = 0.9
+	else:
+		env.background_mode = Environment.BG_COLOR
+		env.background_color = Color("1b1b24")
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.75, 0.75, 0.85)
+		env.ambient_light_energy = 0.7
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.glow_enabled = true
 	env.glow_intensity = 0.8
 	env.glow_bloom = 0.1
