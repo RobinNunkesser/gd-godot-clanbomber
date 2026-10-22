@@ -45,10 +45,6 @@ const EXTRA_LETTERS := {
 	SimExtra.Type.KICK: "K", SimExtra.Type.GLOVE: "G",
 	SimExtra.Type.OVERDRIVE: "O", SimExtra.Type.REVERSE: "R", SimExtra.Type.AUTOBOMB: "A",
 }
-const ARROW_GLYPHS := {
-	SimTile.Type.ARROW_LEFT: "<", SimTile.Type.ARROW_RIGHT: ">",
-	SimTile.Type.ARROW_UP: "^", SimTile.Type.ARROW_DOWN: "v",
-}
 
 const DISEASES: Array[int] = [SimExtra.Type.OVERDRIVE, SimExtra.Type.REVERSE, SimExtra.Type.AUTOBOMB]
 
@@ -147,6 +143,7 @@ func _connect_effects() -> void:
 	world.bomb_exploded.connect(func(_b: SimBomb, e: SimExplosion) -> void: _effects.explosion(e.cells, e.origin))
 	world.box_destroyed.connect(func(c: Vector2i) -> void: _effects.box_break(c))
 	world.bomb_placed.connect(func(b: SimBomb) -> void: _effects.bomb_placed(_world_pos(Vector2(b.pos))))
+	world.bomb_trapped.connect(func(b: SimBomb) -> void: _effects.trap_sprung(b.cell))
 	world.tile_vanishing.connect(func(c: Vector2i) -> void: _effects.tile_drop(c))
 	world.extra_collected.connect(func(id: int, type: int) -> void:
 		var player: SimPlayer = world.players[id]
@@ -195,12 +192,23 @@ func _make_tile_root(cell: Vector2i, tile: int) -> void:
 		SimTile.Type.ICE:
 			root.add_child(_add_plane(_ice_material(), Vector3(0, 0.025, 0)))
 		SimTile.Type.TRAP:
-			var trap: Node3D = TRAP_SCENE.instantiate()
-			trap.scale = Vector3(0.9, 0.5, 0.9)
-			root.add_child(trap)
-		_:
-			if ARROW_GLYPHS.has(tile):
-				_add_floor_glyph(root, ARROW_GLYPHS[tile])
+			root.add_child(_add_plane(_trap_material(), Vector3(0, 0.025, 0)))
+		SimTile.Type.ARROW_UP:
+			var arrow_plane := _add_plane(_arrow_material(), Vector3(0, 0.025, 0))
+			arrow_plane.rotation.y = 0.0
+			root.add_child(arrow_plane)
+		SimTile.Type.ARROW_DOWN:
+			var arrow_plane := _add_plane(_arrow_material(), Vector3(0, 0.025, 0))
+			arrow_plane.rotation.y = PI
+			root.add_child(arrow_plane)
+		SimTile.Type.ARROW_LEFT:
+			var arrow_plane := _add_plane(_arrow_material(), Vector3(0, 0.025, 0))
+			arrow_plane.rotation.y = PI * 0.5
+			root.add_child(arrow_plane)
+		SimTile.Type.ARROW_RIGHT:
+			var arrow_plane := _add_plane(_arrow_material(), Vector3(0, 0.025, 0))
+			arrow_plane.rotation.y = -PI * 0.5
+			root.add_child(arrow_plane)
 
 
 # Mauern verschwinden, neuer Boden entsteht, verschwindende Felder schrumpfen, Löcher sind leer.
@@ -226,16 +234,6 @@ func _sync_tiles() -> void:
 			root.scale = Vector3(ratio, 1.0, ratio)
 
 
-func _add_floor_glyph(parent: Node3D, glyph: String) -> void:
-	var label := Label3D.new()
-	label.text = glyph
-	label.font_size = 160
-	label.pixel_size = 0.006
-	label.modulate = Color("5d4037")
-	label.outline_size = 0
-	label.rotation_degrees = Vector3(-90, 0, 0)
-	label.position = Vector3(0, 0.03, 0)
-	parent.add_child(label)
 
 
 func _make_player(id: int) -> Node3D:
@@ -282,6 +280,12 @@ func _process(delta: float) -> void:
 	if world == null:
 		return
 	_time += delta
+	if _materials.has("tile_arrow"):
+		var arrow_mat: StandardMaterial3D = _materials["tile_arrow"]
+		arrow_mat.uv1_offset.y = fposmod(arrow_mat.uv1_offset.y - delta * 1.5, 1.0)
+	if _materials.has("tile_trap"):
+		var trap_mat: StandardMaterial3D = _materials["tile_trap"]
+		trap_mat.emission_energy_multiplier = 0.65 + 0.25 * sin(_time * 3.0)
 	_sync_tiles()
 	_sync_boxes()
 	_sync_observer()
@@ -629,5 +633,44 @@ func _floor_material() -> StandardMaterial3D:
 	material.uv1_scale = Vector3(0.5, 0.5, 0.5)
 	_materials[key] = material
 	return material
+
+
+func _arrow_material() -> StandardMaterial3D:
+	var key := "tile_arrow"
+	if _materials.has(key):
+		return _materials[key]
+	var material := StandardMaterial3D.new()
+	var tex := load("res://assets/textures/tiles/tile_arrow.png") as Texture2D
+	if tex != null:
+		material.albedo_texture = tex
+	material.roughness = 0.55
+	material.metallic = 0.25
+	material.specular = 0.5
+	material.emission_enabled = true
+	material.emission_texture = tex
+	material.emission = Color("ff9922")
+	material.emission_energy_multiplier = 0.85
+	_materials[key] = material
+	return material
+
+
+func _trap_material() -> StandardMaterial3D:
+	var key := "tile_trap"
+	if _materials.has(key):
+		return _materials[key]
+	var material := StandardMaterial3D.new()
+	var tex := load("res://assets/textures/tiles/tile_trap.png") as Texture2D
+	if tex != null:
+		material.albedo_texture = tex
+	material.roughness = 0.5
+	material.metallic = 0.4
+	material.specular = 0.5
+	material.emission_enabled = true
+	material.emission_texture = tex
+	material.emission = Color("cc2266")
+	material.emission_energy_multiplier = 0.65
+	_materials[key] = material
+	return material
+
 
 

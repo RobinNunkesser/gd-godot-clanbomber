@@ -50,8 +50,7 @@ Simulationskern (129 Tests grün):
 
 Präsentation:
 - 3D-Ansicht (`presentation/arena_view_3d.gd`) mit Kenney-Modellen, 3D-Partikeln und Skybox. (Der frühere 2D-Platzhaltermodus wurde entfernt.)
-- Ton: `presentation/sfx.gd`, 12 Effekte, in `presentation/main.gd` mit den Spielereignissen verbunden.
-- Grafik (Mischung aus zwei Kenney-Kits, CC0): Mini Dungeon für Wände (`wall`), Boden (`floor`), Boxen (`barrel`), Trap (`trap`) und Figuren 5/6 (`human`, `orc`); Platformer Kit für Bomben (`bomb`) und Figuren 1–4 (`oozi/oobi/oopi/oodi`). Zuordnung als Konstanten oben in `arena_view_3d.gd`. Extras, Flammen, Eis, Trap und Pfeile sind Primitive bzw. Beschriftungen.
+- Grafik (Mischung aus zwei Kenney-Kits, CC0 und PBR-Texturen): Mini Dungeon für Wände (`wall`), Boxen (`barrel`) und Figuren 5/6 (`human`, `orc`); Platformer Kit für Bomben (`bomb`) und Figuren 1–4 (`oozi/oobi/oopi/oodi`). PBR-Texturen für Boden (`tile_floor`), Eis (`tile_ice`), animierte Förderband-Pfeile (`tile_arrow`) und pulsierende Fallenfelder (`tile_trap`).
 - 37 Karten in `maps/` (alle Eigenkarten des Autors).
 
 ## Entscheidungen

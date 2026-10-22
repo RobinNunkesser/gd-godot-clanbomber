@@ -62,6 +62,12 @@ func tile_drop(cell: Vector2i) -> void:
 	_burst(_cell_pos(cell, 0.3), Color("9a8f7a"), Color("4a4338"), 10, 1.6, 0.6, 0.12, true)
 
 
+func trap_sprung(cell: Vector2i) -> void:
+	add_shake(0.1)
+	_flash(_cell_pos(cell, 0.6), Color("e040fb"), 5.0, 0.35)
+	_burst(_cell_pos(cell, 0.3), Color("ff80ab"), Color("7b1fa2"), 16, 2.8, 0.65, 0.12)
+
+
 func _cell_pos(cell: Vector2i, height: float) -> Vector3:
 	return Vector3(cell.x + 0.5, height, cell.y + 0.5)
 
