@@ -169,7 +169,7 @@ func _make_tile_root(cell: Vector2i, tile: int) -> void:
 	root.position = Vector3(cell.x + 0.5, 0, cell.y + 0.5)
 	_static_root.add_child(root)
 	_tile_roots[cell] = root
-	var floor_node: Node3D = FLOOR_SCENE.instantiate()
+	var floor_node := _add_plane(_floor_material(), Vector3.ZERO)
 	floor_node.scale = Vector3.ONE * 1.005
 	root.add_child(floor_node)
 	match tile:
@@ -589,11 +589,32 @@ func _ice_material() -> StandardMaterial3D:
 	var tex := load("res://assets/textures/tiles/tile_ice.png") as Texture2D
 	if tex != null:
 		material.albedo_texture = tex
-	material.albedo_color = Color(0.9, 0.95, 1.0, 0.92)
+	material.albedo_color = Color(1.0, 1.0, 1.0, 0.90)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.08
+	material.roughness = 0.05
 	material.metallic = 0.15
-	material.specular = 0.8
+	material.specular = 0.85
+	material.uv1_triplanar = true
+	material.uv1_world_triplanar = true
+	material.uv1_scale = Vector3(0.5, 0.5, 0.5)
 	_materials[key] = material
 	return material
+
+
+func _floor_material() -> StandardMaterial3D:
+	var key := "tile_floor"
+	if _materials.has(key):
+		return _materials[key]
+	var material := StandardMaterial3D.new()
+	var tex := load("res://assets/textures/tiles/tile_floor.png") as Texture2D
+	if tex != null:
+		material.albedo_texture = tex
+	material.roughness = 0.85
+	material.metallic = 0.05
+	material.uv1_triplanar = true
+	material.uv1_world_triplanar = true
+	material.uv1_scale = Vector3(0.5, 0.5, 0.5)
+	_materials[key] = material
+	return material
+
 
