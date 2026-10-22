@@ -49,7 +49,7 @@ Simulationskern (129 Tests grün):
 | 9 | Startmenü (`GameMenu`, `GameConfig`): 2-4 Spieler mit Tastatur 1/2, Gamepad 1-4 oder AI, Karte oder Zufall, Punkte zum Sieg; 129 Tests grün. Gamepad-Eingabe nicht mit echter Hardware getestet |
 
 Präsentation:
-- 2D-Platzhalteransicht (`presentation/arena_view.gd`) und 3D-Ansicht (`presentation/arena_view_3d.gd`), Umschalten mit F2. Standard ist 3D.
+- 3D-Ansicht (`presentation/arena_view_3d.gd`) mit Kenney-Modellen, 3D-Partikeln und Skybox. (Der frühere 2D-Platzhaltermodus wurde entfernt.)
 - Ton: `presentation/sfx.gd`, 12 Effekte, in `presentation/main.gd` mit den Spielereignissen verbunden.
 - Grafik (Mischung aus zwei Kenney-Kits, CC0): Mini Dungeon für Wände (`wall`), Boden (`floor`), Boxen (`barrel`), Trap (`trap`) und Figuren 5/6 (`human`, `orc`); Platformer Kit für Bomben (`bomb`) und Figuren 1–4 (`oozi/oobi/oopi/oodi`). Zuordnung als Konstanten oben in `arena_view_3d.gd`. Extras, Flammen, Eis, Trap und Pfeile sind Primitive bzw. Beschriftungen.
 - 37 Karten in `maps/` (alle Eigenkarten des Autors).

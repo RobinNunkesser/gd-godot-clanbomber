@@ -36,12 +36,12 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Taste | Aktion |
 |---|---|
 | Menü: ↑↓ ←→, Enter / Leertaste / Gamepad A | Steuerung je Platz, Karte (oder Zufall), Punkte wählen und starten |
-| Esc / Gamepad Start | Menü erneut öffnen (startet ein neues Match) |
+| Esc / Gamepad Start | Menü öffnen (Pause / Weiterspielen oder neues Match) |
 | Tastatur 1: WASD, Leertaste | bewegen, Bombe legen |
 | Tastatur 2: Pfeiltasten, Enter | bewegen, Bombe legen |
 | Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-4 im Menü zuordnen) |
-| N / P / R | nächste / vorherige Karte / Neustart |
-| F2 | Ansicht umschalten: 3D (Kenney-Modelle, Standard) / 2D (Platzhalter) |
+| N / P / R | nächste / vorherige Karte / Runde neu starten |
+| M | Musik & Ton stummschalten (Mute) |
 | F5 | Neues Match (Punkte zurücksetzen) |
 | F3 | Testhilfe: Sudden Death in 2 s starten |
 | F1 | Testhilfe: alle 8 Extras neben Spieler 1 ablegen |

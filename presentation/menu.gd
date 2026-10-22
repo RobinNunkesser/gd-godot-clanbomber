@@ -1,18 +1,18 @@
 class_name GameMenu
 extends PanelContainer
-## Startmenü: Steuerung je Spielerplatz, Karte, Punkte. Bedienung mit Pfeiltasten/D-Pad, Enter/Leertaste/A.
+## Start- und Pausemenü: Steuerung je Spielerplatz, Karte, Punkte, Hilfe und Beenden.
+## Bedienung mit Pfeiltasten/D-Pad, Enter/Leertaste/Gamepad A, Esc zum Weiterspielen.
 
 signal start_requested
+signal resume_requested
 
 const ROW_MAP := GameConfig.SLOT_COUNT
 const ROW_POINTS := GameConfig.SLOT_COUNT + 1
-const ROW_START := GameConfig.SLOT_COUNT + 2
-const ROW_HELP := GameConfig.SLOT_COUNT + 3
-const ROW_QUIT := GameConfig.SLOT_COUNT + 4
-const ROW_COUNT := GameConfig.SLOT_COUNT + 5
 
 var config := GameConfig.new()
 var maps: Array[String] = []
+var is_game_active := false
+
 var _row := 0
 var _show_help := false
 var _text := RichTextLabel.new()
@@ -35,7 +35,28 @@ func _ready() -> void:
 func open() -> void:
 	visible = true
 	_show_help = false
+	_row = _row_resume() if is_game_active else _row_start()
 	_render()
+
+
+func _row_resume() -> int:
+	return GameConfig.SLOT_COUNT + 2 if is_game_active else -1
+
+
+func _row_start() -> int:
+	return GameConfig.SLOT_COUNT + 3 if is_game_active else GameConfig.SLOT_COUNT + 2
+
+
+func _row_help() -> int:
+	return GameConfig.SLOT_COUNT + 4 if is_game_active else GameConfig.SLOT_COUNT + 3
+
+
+func _row_quit() -> int:
+	return GameConfig.SLOT_COUNT + 5 if is_game_active else GameConfig.SLOT_COUNT + 4
+
+
+func _row_count() -> int:
+	return GameConfig.SLOT_COUNT + (4 if is_game_active else 3)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -47,22 +68,32 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			_render()
 		return
+
+	var key := event as InputEventKey
+	var key_code := 0
+	if key != null:
+		key_code = key.physical_keycode if key.keycode == 0 else key.keycode
+
+	if event.is_action_pressed("ui_cancel") or (key != null and not key.echo and key.pressed and key_code == KEY_ESCAPE):
+		if is_game_active:
+			visible = false
+			get_viewport().set_input_as_handled()
+			resume_requested.emit()
+			return
+
 	if event.is_action_pressed("ui_up"):
-		_row = posmod(_row - 1, ROW_COUNT)
+		_row = posmod(_row - 1, _row_count())
 	elif event.is_action_pressed("ui_down"):
-		_row = posmod(_row + 1, ROW_COUNT)
+		_row = posmod(_row + 1, _row_count())
 	elif event.is_action_pressed("ui_left"):
 		_change(-1)
 	elif event.is_action_pressed("ui_right"):
 		_change(1)
 	elif event.is_action_pressed("ui_accept"):
 		_accept()
-	elif event.is_action_pressed("ui_cancel"):
-		if config.is_startable():
-			visible = false
-			start_requested.emit()
 	else:
 		return
+
 	get_viewport().set_input_as_handled()
 	_render()
 
@@ -77,16 +108,22 @@ func _change(step: int) -> void:
 
 
 func _accept() -> void:
-	if _row == ROW_START:
+	if _row == _row_resume():
+		visible = false
+		resume_requested.emit()
+	elif _row == _row_start():
 		if config.is_startable():
 			visible = false
 			start_requested.emit()
-	elif _row == ROW_HELP:
+	elif _row == _row_help():
 		_show_help = true
-	elif _row == ROW_QUIT:
+	elif _row == _row_quit():
 		get_tree().quit()
 	elif _row >= ROW_MAP:
-		if config.is_startable():
+		if is_game_active:
+			visible = false
+			resume_requested.emit()
+		elif config.is_startable():
 			visible = false
 			start_requested.emit()
 	else:
@@ -107,10 +144,14 @@ func _render() -> void:
 	lines.append(_row_line(ROW_MAP, "Karte", map_text))
 	lines.append(_row_line(ROW_POINTS, "Punkte zum Sieg", str(config.points_to_win)))
 	lines.append("")
-	var start := "Start" if config.is_startable() else "Start (mindestens 2 Spieler nötig)"
-	lines.append(_row_line(ROW_START, "[b]%s[/b]" % start, ""))
-	lines.append(_row_line(ROW_HELP, "Steuerung & Hilfe", ""))
-	lines.append(_row_line(ROW_QUIT, "Spiel beenden", ""))
+	if is_game_active:
+		lines.append(_row_line(_row_resume(), "[b]Weiterspielen (Resume)[/b]", ""))
+		lines.append(_row_line(_row_start(), "[b]Neues Match starten[/b]", ""))
+	else:
+		var start := "Start" if config.is_startable() else "Start (mindestens 2 Spieler nötig)"
+		lines.append(_row_line(_row_start(), "[b]%s[/b]" % start, ""))
+	lines.append(_row_line(_row_help(), "Steuerung & Hilfe", ""))
+	lines.append(_row_line(_row_quit(), "Spiel beenden", ""))
 	lines.append("")
 	lines.append("[center][color=#aaaaaa]↑↓ wählen, ←→ ändern, Enter / Leertaste / Gamepad A bestätigen[/color][/center]")
 	_text.text = "\n".join(lines)
@@ -125,17 +166,16 @@ func _render_help() -> void:
 		"[color=#66ff66][b]Gamepad (1–4):[/b][/color]         [b]D-Pad / Stick[/b] = Laufen  |  [b]A-Taste[/b] = Bombe legen",
 		"",
 		"[color=#ffaaee][b]Kurzbefehle im Spiel:[/b][/color]",
-		"  [b]Esc[/b]        Menü / Pause aufrufen",
-		"  [b]F2[/b]         Ansicht umschalten (3D / 2D)",
+		"  [b]Esc[/b]        Menü aufrufen / Weiterspielen",
+		"  [b]N[/b]          Nächste Karte laden (Next Map)",
+		"  [b]P[/b]          Vorherige Karte laden (Previous Map)",
 		"  [b]R[/b]          Aktuelle Runde neu starten",
 		"  [b]F5[/b]         Neues Match starten (Punkte zurücksetzen)",
-		"  [b]N / P[/b]      Nächste / vorherige Karte laden",
-		"  [b]M[/b]          Musik stummschalten (Mute)",
+		"  [b]M[/b]          Musik & Ton stummschalten (Mute)",
 		"",
 		"[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center]"
 	]
 	_text.text = "\n".join(lines)
-
 
 
 func _row_line(row: int, label: String, value: String) -> String:

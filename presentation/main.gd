@@ -1,14 +1,13 @@
 extends Node2D
 ## Spielbarer Prototyp: lädt eine Karte, speist die Simulation und liest Eingaben.
-## Startmenü (Esc öffnet es erneut): Steuerung je Platz (Tastatur 1/2, Gamepad 1-4, AI), Karte, Punkte.
+## Startmenü (Esc öffnet es): Steuerung je Platz (Tastatur 1/2, Gamepad 1-4, AI), Karte, Punkte.
 ## Tastatur 1: WASD + Leertaste, Tastatur 2: Pfeiltasten + Enter, Gamepad: D-Pad/linker Stick + A.
-## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match.
+## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match, M: Mute.
 
 const MAP_DIR := "res://maps"
 const PAD_DEADZONE := 0.5
 const CONTINUE_LOCK_MS := 800
 
-@onready var view: ArenaView = $ArenaView
 @onready var view3d: ArenaView3D = $ArenaView3D
 @onready var sfx: Sfx = $Sfx
 @onready var hud: Label = $UI/Hud
@@ -43,6 +42,7 @@ func _ready() -> void:
 	$UI.add_child(_menu)
 	_menu.maps = _maps
 	_menu.start_requested.connect(_start_match)
+	_menu.resume_requested.connect(_resume_game)
 	_open_menu()
 
 
@@ -64,8 +64,13 @@ func _play_music(stream: AudioStream, volume_db := -8.0) -> void:
 
 
 func _open_menu() -> void:
+	_menu.is_game_active = (_world != null and not _round_over and not _scoreboard.visible)
 	_play_music(_menu_music, -8.0)
 	_menu.open()
+
+
+func _resume_game() -> void:
+	_play_music(_game_music, -10.0)
 
 
 # Lädt die Karte `step` Positionen weiter und überspringt Karten, die für die Spielerzahl nicht taugen.
@@ -106,11 +111,9 @@ func _try_load_current_map() -> bool:
 	if not _menu.config.is_random_map():
 		_menu.config.map_name = _maps[_map_index]
 	_connect_sounds()
-	view.world = _world
 	view3d.bind(_world)
 	_round_over = false
-	banner.text = "%s  (von %s)       [Esc] Menü  |  [F2] 3D/2D  |  [R] Reset  |  [M] Mute" % [_maps[_map_index].get_basename(), data.author]
-	view.queue_redraw()
+	banner.text = "%s  (von %s)       [Esc] Menü  |  [N] Nächste Karte  |  [R] Reset  |  [M] Mute" % [_maps[_map_index].get_basename(), data.author]
 	return true
 
 
@@ -125,7 +128,6 @@ func _physics_process(delta: float) -> void:
 		ai.update(_world, whole)
 	_world.tick(whole)
 	_check_round_end()
-	view.queue_redraw()
 	hud.text = _status_text()
 
 
@@ -134,15 +136,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if key == null or not key.pressed or key.echo or _world == null or _menu.visible:
 		return
 	if _scoreboard.visible:
-		_handle_scoreboard_key(key.keycode)
+		_handle_scoreboard_key(key)
 		return
-	match key.keycode:
+	var code := key.physical_keycode if key.keycode == 0 else key.keycode
+	if event.is_action_pressed("ui_cancel") or code == KEY_ESCAPE:
+		_open_menu()
+		return
+	match code:
 		KEY_SPACE:
 			_bomb_for_controller(GameConfig.Controller.KEYBOARD_1)
 		KEY_ENTER, KEY_KP_ENTER:
 			_bomb_for_controller(GameConfig.Controller.KEYBOARD_2)
-		KEY_ESCAPE:
-			_open_menu()
 		KEY_M:
 			AudioServer.set_bus_mute(0, not AudioServer.is_bus_mute(0))
 		KEY_N:
@@ -154,20 +158,23 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_F5:
 			_match.reset()
 			_load_map(0)
-		KEY_F2:
-			_toggle_view()
 		KEY_F3:
 			_world.round_time_ms = mini(_world.round_time_ms, 2000)
 		KEY_F1:
 			_debug_spawn_extras()
 
 
-func _handle_scoreboard_key(keycode: Key) -> void:
+func _handle_scoreboard_key(key: InputEventKey) -> void:
+	var code := key.physical_keycode if key.keycode == 0 else key.keycode
+	if code == KEY_ESCAPE or key.is_action_pressed("ui_cancel"):
+		_scoreboard.visible = false
+		_open_menu()
+		return
 	if Time.get_ticks_msec() < _continue_unlock_at:
 		return
-	if keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+	if code in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		_continue_after_scoreboard()
-	elif keycode == KEY_F5:
+	elif code == KEY_F5:
 		_match.reset()
 		_load_map(0)
 
@@ -180,6 +187,7 @@ func _continue_after_scoreboard() -> void:
 # Neues Match mit den Menüeinstellungen. Eine feste Karte bleibt über alle Runden gleich.
 func _start_match() -> void:
 	var config := _menu.config
+	_menu.is_game_active = true
 	_match = SimMatch.new(config.points_to_win)
 	if not config.is_random_map():
 		_map_index = maxi(_maps.find(config.map_name), 0)
@@ -195,6 +203,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _scoreboard.visible:
 		if button.button_index == JOY_BUTTON_A and Time.get_ticks_msec() >= _continue_unlock_at:
 			_continue_after_scoreboard()
+		elif button.button_index == JOY_BUTTON_START:
+			_scoreboard.visible = false
+			_open_menu()
 		return
 	if button.button_index == JOY_BUTTON_A:
 		_bomb_for_controller(GameConfig.Controller.PAD_1 + button.device)
@@ -267,14 +278,6 @@ func _connect_sounds() -> void:
 		banner.text = "SUDDEN DEATH!"
 		sfx.play("disease"))
 	_world.tile_vanishing.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -3.0))
-
-
-func _toggle_view() -> void:
-	var use_3d := not view3d.visible
-	view3d.visible = use_3d
-	view.visible = not use_3d
-	view3d.set_process(use_3d)
-	sfx.play("ui_select")
 
 
 # Kurzstatus je Spieler: Bomben, Power, Skateboards, Kick/Glove, Krankheit.
