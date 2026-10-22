@@ -58,3 +58,32 @@ func test_pad_device() -> void:
 	config.slots[2] = GameConfig.Controller.PAD_2
 	assert_int(config.pad_device(2)).is_equal(1)
 	assert_int(config.pad_device(0)).is_equal(-1)
+
+
+func test_audio_volume_cycle_and_toggle() -> void:
+	var config := GameConfig.new()
+	assert_int(config.music_volume).is_equal(4)
+	assert_str(config.music_label()).is_equal("100 %")
+	assert_bool(config.is_music_enabled()).is_true()
+	
+	config.cycle_music(1)
+	assert_int(config.music_volume).is_equal(4)
+	config.cycle_music(-2)
+	assert_int(config.music_volume).is_equal(2)
+	assert_str(config.music_label()).is_equal("50 %")
+	
+	config.toggle_music_mute()
+	assert_int(config.music_volume).is_equal(0)
+	assert_str(config.music_label()).is_equal("Aus")
+	assert_bool(config.is_music_enabled()).is_false()
+	
+	config.toggle_music_mute()
+	assert_int(config.music_volume).is_equal(2)
+	assert_str(config.music_label()).is_equal("50 %")
+	
+	config.cycle_sfx(-4)
+	assert_int(config.sfx_volume).is_equal(0)
+	assert_bool(config.is_sfx_enabled()).is_false()
+	config.toggle_sfx_mute()
+	assert_int(config.sfx_volume).is_equal(4)
+

@@ -29,6 +29,7 @@ var _game_music: AudioStream
 
 
 func _ready() -> void:
+	_setup_audio()
 	add_child(_bgm)
 	_menu_music = _load_looping_stream("res://assets/audio/music/music_menu.ogg")
 	_game_music = _load_looping_stream("res://assets/audio/music/music_game.ogg")
@@ -43,7 +44,34 @@ func _ready() -> void:
 	_menu.maps = _maps
 	_menu.start_requested.connect(_start_match)
 	_menu.resume_requested.connect(_resume_game)
+	_menu.audio_changed.connect(_apply_audio_config)
+	_apply_audio_config()
 	_open_menu()
+
+
+func _setup_audio() -> void:
+	if AudioServer.get_bus_index("Music") == -1:
+		AudioServer.add_bus()
+		var idx := AudioServer.get_bus_count() - 1
+		AudioServer.set_bus_name(idx, "Music")
+		AudioServer.set_bus_send(idx, "Master")
+	if AudioServer.get_bus_index("SFX") == -1:
+		AudioServer.add_bus()
+		var idx := AudioServer.get_bus_count() - 1
+		AudioServer.set_bus_name(idx, "SFX")
+		AudioServer.set_bus_send(idx, "Master")
+	_bgm.bus = "Music"
+
+
+func _apply_audio_config() -> void:
+	var music_bus := AudioServer.get_bus_index("Music")
+	if music_bus >= 0:
+		AudioServer.set_bus_mute(music_bus, not _menu.config.is_music_enabled())
+		AudioServer.set_bus_volume_db(music_bus, _menu.config.music_db())
+	var sfx_bus := AudioServer.get_bus_index("SFX")
+	if sfx_bus >= 0:
+		AudioServer.set_bus_mute(sfx_bus, not _menu.config.is_sfx_enabled())
+		AudioServer.set_bus_volume_db(sfx_bus, _menu.config.sfx_db())
 
 
 func _load_looping_stream(path: String) -> AudioStream:
@@ -113,7 +141,7 @@ func _try_load_current_map() -> bool:
 	_connect_sounds()
 	view3d.bind(_world)
 	_round_over = false
-	banner.text = "%s  (von %s)       [Esc] Menü  |  [N] Nächste Karte  |  [R] Reset  |  [M] Mute" % [_maps[_map_index].get_basename(), data.author]
+	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [N] Nächste Karte  |  [R] Reset" % [_maps[_map_index].get_basename(), data.author]
 	return true
 
 
@@ -131,52 +159,96 @@ func _physics_process(delta: float) -> void:
 	hud.text = _status_text()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo or _world == null or _menu.visible:
+func _input(event: InputEvent) -> void:
+	if not event.is_pressed() or event.is_echo():
 		return
+
+	var is_cancel := false
+	if event is InputEventKey:
+		var k := event as InputEventKey
+		var code := k.physical_keycode if k.keycode == 0 else k.keycode
+		if code == KEY_ESCAPE:
+			is_cancel = true
+	elif event is InputEventJoypadButton:
+		var b := event as InputEventJoypadButton
+		if b.button_index == JOY_BUTTON_START:
+			is_cancel = true
+
+	if is_cancel or event.is_action_pressed("ui_cancel"):
+		if _scoreboard.visible:
+			_scoreboard.visible = false
+			_open_menu()
+			get_viewport().set_input_as_handled()
+			return
+		if _menu.visible:
+			if _menu.is_game_active:
+				_menu.resume()
+			else:
+				get_tree().quit()
+			get_viewport().set_input_as_handled()
+			return
+		if _world != null:
+			_open_menu()
+			get_viewport().set_input_as_handled()
+			return
+
 	if _scoreboard.visible:
-		_handle_scoreboard_key(key)
+		_handle_scoreboard_input(event)
 		return
-	var code := key.physical_keycode if key.keycode == 0 else key.keycode
-	if event.is_action_pressed("ui_cancel") or code == KEY_ESCAPE:
-		_open_menu()
+
+	if _menu.visible or _world == null:
 		return
-	match code:
-		KEY_SPACE:
-			_bomb_for_controller(GameConfig.Controller.KEYBOARD_1)
-		KEY_ENTER, KEY_KP_ENTER:
-			_bomb_for_controller(GameConfig.Controller.KEYBOARD_2)
-		KEY_M:
-			AudioServer.set_bus_mute(0, not AudioServer.is_bus_mute(0))
-		KEY_N:
-			_load_map(1)
-		KEY_P:
-			_load_map(-1)
-		KEY_R:
-			_load_map(0)
-		KEY_F5:
+
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		var code := key.physical_keycode if key.keycode == 0 else key.keycode
+		match code:
+			KEY_SPACE:
+				_bomb_for_controller(GameConfig.Controller.KEYBOARD_1)
+			KEY_ENTER, KEY_KP_ENTER:
+				_bomb_for_controller(GameConfig.Controller.KEYBOARD_2)
+			KEY_M:
+				_menu.config.toggle_music_mute()
+				_apply_audio_config()
+				banner.text = "Musik: %s" % _menu.config.music_label()
+			KEY_F4:
+				_menu.config.toggle_sfx_mute()
+				_apply_audio_config()
+				banner.text = "Ton-Effekte: %s" % _menu.config.sfx_label()
+				if _menu.config.is_sfx_enabled():
+					sfx.play("ui_select")
+			KEY_N:
+				_load_map(1)
+			KEY_P:
+				_load_map(-1)
+			KEY_R:
+				_load_map(0)
+			KEY_F5:
+				_match.reset()
+				_load_map(0)
+			KEY_F3:
+				_world.round_time_ms = mini(_world.round_time_ms, 2000)
+			KEY_F1:
+				_debug_spawn_extras()
+	elif event is InputEventJoypadButton:
+		var button := event as InputEventJoypadButton
+		if button.button_index == JOY_BUTTON_A:
+			_bomb_for_controller(GameConfig.Controller.PAD_1 + button.device)
+
+
+func _handle_scoreboard_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		var code := key.physical_keycode if key.keycode == 0 else key.keycode
+		if Time.get_ticks_msec() >= _continue_unlock_at and code in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+			_continue_after_scoreboard()
+		elif code == KEY_F5:
 			_match.reset()
 			_load_map(0)
-		KEY_F3:
-			_world.round_time_ms = mini(_world.round_time_ms, 2000)
-		KEY_F1:
-			_debug_spawn_extras()
-
-
-func _handle_scoreboard_key(key: InputEventKey) -> void:
-	var code := key.physical_keycode if key.keycode == 0 else key.keycode
-	if code == KEY_ESCAPE or key.is_action_pressed("ui_cancel"):
-		_scoreboard.visible = false
-		_open_menu()
-		return
-	if Time.get_ticks_msec() < _continue_unlock_at:
-		return
-	if code in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
-		_continue_after_scoreboard()
-	elif code == KEY_F5:
-		_match.reset()
-		_load_map(0)
+	elif event is InputEventJoypadButton:
+		var button := event as InputEventJoypadButton
+		if button.button_index == JOY_BUTTON_A and Time.get_ticks_msec() >= _continue_unlock_at:
+			_continue_after_scoreboard()
 
 
 func _continue_after_scoreboard() -> void:
@@ -194,23 +266,6 @@ func _start_match() -> void:
 	_load_map(1 if config.is_random_map() else 0)
 	_play_music(_game_music, -10.0)
 	sfx.play("ui_select")
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	var button := event as InputEventJoypadButton
-	if button == null or not button.pressed or _world == null or _menu.visible:
-		return
-	if _scoreboard.visible:
-		if button.button_index == JOY_BUTTON_A and Time.get_ticks_msec() >= _continue_unlock_at:
-			_continue_after_scoreboard()
-		elif button.button_index == JOY_BUTTON_START:
-			_scoreboard.visible = false
-			_open_menu()
-		return
-	if button.button_index == JOY_BUTTON_A:
-		_bomb_for_controller(GameConfig.Controller.PAD_1 + button.device)
-	elif button.button_index == JOY_BUTTON_START:
-		_open_menu()
 
 
 func _bomb_for_controller(controller: int) -> void:

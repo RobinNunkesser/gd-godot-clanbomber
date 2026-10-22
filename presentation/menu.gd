@@ -5,9 +5,12 @@ extends PanelContainer
 
 signal start_requested
 signal resume_requested
+signal audio_changed
 
 const ROW_MAP := GameConfig.SLOT_COUNT
 const ROW_POINTS := GameConfig.SLOT_COUNT + 1
+const ROW_MUSIC := GameConfig.SLOT_COUNT + 2
+const ROW_SFX := GameConfig.SLOT_COUNT + 3
 
 var config := GameConfig.new()
 var maps: Array[String] = []
@@ -23,6 +26,8 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(680, 0)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
+	focus_mode = Control.FOCUS_NONE
+	_text.focus_mode = Control.FOCUS_NONE
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.scroll_active = false
@@ -39,24 +44,30 @@ func open() -> void:
 	_render()
 
 
+func resume() -> void:
+	if is_game_active:
+		visible = false
+		resume_requested.emit()
+
+
 func _row_resume() -> int:
-	return GameConfig.SLOT_COUNT + 2 if is_game_active else -1
+	return GameConfig.SLOT_COUNT + 4 if is_game_active else -1
 
 
 func _row_start() -> int:
-	return GameConfig.SLOT_COUNT + 3 if is_game_active else GameConfig.SLOT_COUNT + 2
-
-
-func _row_help() -> int:
-	return GameConfig.SLOT_COUNT + 4 if is_game_active else GameConfig.SLOT_COUNT + 3
-
-
-func _row_quit() -> int:
 	return GameConfig.SLOT_COUNT + 5 if is_game_active else GameConfig.SLOT_COUNT + 4
 
 
+func _row_help() -> int:
+	return GameConfig.SLOT_COUNT + 6 if is_game_active else GameConfig.SLOT_COUNT + 5
+
+
+func _row_quit() -> int:
+	return GameConfig.SLOT_COUNT + 7 if is_game_active else GameConfig.SLOT_COUNT + 6
+
+
 func _row_count() -> int:
-	return GameConfig.SLOT_COUNT + (4 if is_game_active else 3)
+	return GameConfig.SLOT_COUNT + (6 if is_game_active else 5)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -105,12 +116,17 @@ func _change(step: int) -> void:
 		config.cycle_map(maps, step)
 	elif _row == ROW_POINTS:
 		config.cycle_points(step)
+	elif _row == ROW_MUSIC:
+		config.cycle_music(step)
+		audio_changed.emit()
+	elif _row == ROW_SFX:
+		config.cycle_sfx(step)
+		audio_changed.emit()
 
 
 func _accept() -> void:
 	if _row == _row_resume():
-		visible = false
-		resume_requested.emit()
+		resume()
 	elif _row == _row_start():
 		if config.is_startable():
 			visible = false
@@ -119,13 +135,8 @@ func _accept() -> void:
 		_show_help = true
 	elif _row == _row_quit():
 		get_tree().quit()
-	elif _row >= ROW_MAP:
-		if is_game_active:
-			visible = false
-			resume_requested.emit()
-		elif config.is_startable():
-			visible = false
-			start_requested.emit()
+	elif _row == ROW_MUSIC or _row == ROW_SFX or _row == ROW_MAP or _row == ROW_POINTS:
+		_change(1)
 	else:
 		_change(1)
 
@@ -143,6 +154,8 @@ func _render() -> void:
 	var map_text := "Zufall" if config.is_random_map() else config.map_name.get_basename()
 	lines.append(_row_line(ROW_MAP, "Karte", map_text))
 	lines.append(_row_line(ROW_POINTS, "Punkte zum Sieg", str(config.points_to_win)))
+	lines.append(_row_line(ROW_MUSIC, "Musik", config.music_label()))
+	lines.append(_row_line(ROW_SFX, "Ton-Effekte", config.sfx_label()))
 	lines.append("")
 	if is_game_active:
 		lines.append(_row_line(_row_resume(), "[b]Weiterspielen (Resume)[/b]", ""))
@@ -166,12 +179,13 @@ func _render_help() -> void:
 		"[color=#66ff66][b]Gamepad (1–4):[/b][/color]         [b]D-Pad / Stick[/b] = Laufen  |  [b]A-Taste[/b] = Bombe legen",
 		"",
 		"[color=#ffaaee][b]Kurzbefehle im Spiel:[/b][/color]",
-		"  [b]Esc[/b]        Menü aufrufen / Weiterspielen",
+		"  [b]Esc[/b]        Menü aufrufen / Weiterspielen (bzw. Beenden)",
+		"  [b]M[/b]          Musik stummschalten / aktivieren",
+		"  [b]F4[/b]         Ton-Effekte stummschalten / aktivieren",
 		"  [b]N[/b]          Nächste Karte laden (Next Map)",
 		"  [b]P[/b]          Vorherige Karte laden (Previous Map)",
 		"  [b]R[/b]          Aktuelle Runde neu starten",
 		"  [b]F5[/b]         Neues Match starten (Punkte zurücksetzen)",
-		"  [b]M[/b]          Musik & Ton stummschalten (Mute)",
 		"",
 		"[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center]"
 	]

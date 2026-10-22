@@ -10,6 +10,8 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(560, 0)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
+	focus_mode = Control.FOCUS_NONE
+	_text.focus_mode = Control.FOCUS_NONE
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.scroll_active = false

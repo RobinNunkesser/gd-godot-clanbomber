@@ -23,6 +23,66 @@ var slots: Array[int] = [Controller.KEYBOARD_1, Controller.AI, Controller.OFF, C
 var map_name := "Crossroads.map"
 var points_to_win := SimConstants.POINTS_TO_WIN
 
+const VOLUME_LEVELS: Array[String] = ["Aus", "25 %", "50 %", "75 %", "100 %"]
+const VOLUME_DBS: Array[float] = [-80.0, -18.0, -10.0, -4.0, 0.0]
+
+var music_volume: int = 4
+var sfx_volume: int = 4
+var _last_music_volume: int = 4
+var _last_sfx_volume: int = 4
+
+
+func cycle_music(step: int) -> void:
+	music_volume = clampi(music_volume + step, 0, VOLUME_LEVELS.size() - 1)
+	if music_volume > 0:
+		_last_music_volume = music_volume
+
+
+func cycle_sfx(step: int) -> void:
+	sfx_volume = clampi(sfx_volume + step, 0, VOLUME_LEVELS.size() - 1)
+	if sfx_volume > 0:
+		_last_sfx_volume = sfx_volume
+
+
+func music_label() -> String:
+	return VOLUME_LEVELS[music_volume]
+
+
+func sfx_label() -> String:
+	return VOLUME_LEVELS[sfx_volume]
+
+
+func music_db() -> float:
+	return VOLUME_DBS[music_volume]
+
+
+func sfx_db() -> float:
+	return VOLUME_DBS[sfx_volume]
+
+
+func is_music_enabled() -> bool:
+	return music_volume > 0
+
+
+func is_sfx_enabled() -> bool:
+	return sfx_volume > 0
+
+
+func toggle_music_mute() -> void:
+	if music_volume > 0:
+		_last_music_volume = music_volume
+		music_volume = 0
+	else:
+		music_volume = _last_music_volume if _last_music_volume > 0 else 4
+
+
+func toggle_sfx_mute() -> void:
+	if sfx_volume > 0:
+		_last_sfx_volume = sfx_volume
+		sfx_volume = 0
+	else:
+		sfx_volume = _last_sfx_volume if _last_sfx_volume > 0 else 4
+
 
 # Nächste/vorherige Steuerung für einen Platz. Tastatur und Gamepads sind je nur einmal vergebbar.
 func cycle_slot(slot: int, step: int) -> void:
