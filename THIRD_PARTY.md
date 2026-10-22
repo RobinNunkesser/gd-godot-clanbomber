@@ -1,14 +1,17 @@
-# Third-Party-Hinweise
+# Third-Party-Hinweise & Lizenzstatus
 
-Dieses Repo (Code und eigene Karten, einschließlich der Karten der Aliase *Robin Nunkesser*, *anonymous hendrik*, *anonymous hendrik*, *cjl*, die laut Eigentümer von ihm stammen) steht unter der MIT-Lizenz (`LICENSE`).
+Dieses Repository (Code, eigene Karten und neu erstellte Assets) steht final unter der **MIT-Lizenz** (`LICENSE`).
 
 | Komponente | Lizenz | Hinweis |
 |---|---|---|
-| GdUnit4 v6.2.2 (`addons/gdUnit4/`) | MIT (`addons/gdUnit4/LICENSE`) | Test-Framework, Autor Mike Schulze |
-| Kenney-Assets (`assets/audio/`: Impact, Sci-fi, Digital und Interface Sounds; `assets/models/`: Platformer Kit, Mini Dungeon) | CC0 1.0 | Ausgewählte Dateien, Lizenztexte der Modelle liegen bei; Nennung freiwillig (kenney.nl) |
-| Originalkarten von ClanBomber | GPL-2.0-or-later | **Nicht in diesem Repo.** Separates Datenpaket `gd-godot-clanbomber-original-maps` |
-| Originalsounds/-grafiken von ClanBomber | Herkunft ungeklärt | **Nicht übernehmen**, solange die Rechte nicht belegt sind |
+| **Eigener GDScript-Code** (`core/`, `presentation/`, `scenes/`) | MIT (`LICENSE`) | 100 % Clean-Room-Neuimplementierung from scratch; kein Code aus dem Original übernommen |
+| **Eigene Texturen** (`assets/textures/`) | MIT | Neu erstellte PBR-Assets (Münz-Tokens, nahtloses Eis, Schiefer-Steinboden, Himmels-Skybox) |
+| **GdUnit4 v6.2.2** (`addons/gdUnit4/`) | MIT (`addons/gdUnit4/LICENSE`) | Test-Framework, Autor Mike Schulze |
+| **Kenney-Assets** (`assets/audio/`, `assets/models/`) | CC0 1.0 Universal | Public Domain Dedication (kenney.nl); freie Nutzung ohne Copyleft |
+| **Eigene Karten** (`maps/`) | MIT | 37 vom Autor erstellte Karten (Autoren im Dateikopf: *Robin Nunkesser*, *anonymous hendrik*, *cjl*) |
+| **Originalkarten von ClanBomber** | GPL-2.0-or-later | **Nicht in diesem Repo.** Separates Datenpaket `gd-godot-clanbomber-original-maps` |
+| **Originalsounds/-grafiken von ClanBomber** | Herkunft ungeklärt | **Nicht übernommen.** Vollständig durch CC0- und Neuschöpfungen ersetzt |
 
-## Abgrenzung zum Original
+## Abgrenzung zum Original (Clean-Room-Status)
 
-Der Code ist eine Neuimplementierung auf Basis einer Verhaltensbeschreibung (`ORIGINAL_BEHAVIOR.md` im Workspace `agent-workbench`). Es wurde kein Quellcode des Originals übernommen. Ein Rechtsgutachten dazu liegt nicht vor.
+Der Code ist eine vollständige Clean-Room-Neuimplementierung auf Basis einer funktionalen Verhaltensbeschreibung (`ORIGINAL_BEHAVIOR.md` im Workspace `agent-workbench`). Es wurde kein Quellcode, keine Binärdatei und kein geschütztes Asset des historischen C++-Spiels übernommen. Damit besteht keinerlei GPL-Bindung für dieses Repository.

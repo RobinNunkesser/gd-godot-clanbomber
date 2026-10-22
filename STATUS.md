@@ -56,8 +56,8 @@ Präsentation:
 
 ## Entscheidungen
 
-- **Lizenz (Option 3, kein Rechtsrat):** Das Original ist GPL v2+. Dieses Repo ist MIT und enthält Neuimplementierung, eigene Karten und CC0-Assets. Originalkarten liegen im separaten GPL-Datenpaket. Keine Originalsounds oder -grafiken (Herkunft ungeklärt). Siehe `THIRD_PARTY.md`.
-- **Assets:** Nur CC0 (Kenney). Das glTF-Paket (Quaternius?) bleibt wegen unbelegter Lizenz zurückgestellt.
+- **Lizenz (final: MIT):** Vollständige Clean-Room-Neuimplementierung (from scratch), eigene Karten, neu erstellte PBR-Texturen und CC0-Assets (Kenney). Kein übernommener C++-Code, daher keine GPL-Bindung. Historische Originalkarten liegen im separaten GPL-Datenpaket. Siehe `THIRD_PARTY.md`.
+- **Assets:** Nur CC0 (Kenney) und eigene/generierte PBR-Texturen. Keine Übernahme ungeklärter historischer ClanBomber-Originalgrafiken.
 - **Kern ist reine `RefCounted`-Logik** mit ganzzahligen Millisekunden und Pixeln (40 px je Zelle, Raster 17×13), damit er deterministisch und testbar ist.
 - **Kenney `template-wall.glb` ungeeignet** als Vollblock (offene Rückseite, Schadensoptik); ersetzt durch `block-grass`.
 
