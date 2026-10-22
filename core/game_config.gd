@@ -20,7 +20,7 @@ const NAMES := {
 }
 
 var slots: Array[int] = [Controller.KEYBOARD_1, Controller.AI, Controller.OFF, Controller.OFF]
-var map_name := "crossroads.map"
+var map_name := "Crossroads.map"
 var points_to_win := SimConstants.POINTS_TO_WIN
 
 

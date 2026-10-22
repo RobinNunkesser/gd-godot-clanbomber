@@ -81,7 +81,7 @@ Präsentation:
 - Eis, Trap und Pfeile sind noch Platzhalter-Grafik (Extras und Flammen sind Modelle).
 - Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
 - Extras sind Mini-Dungeon-Modelle (`weapon-sword` Power, `pot` Bomb, `coin` Skateboard, `weapon-spear` Kick, `shield-round` Glove, `potion` für die drei Krankheiten, farblich getönt) plus schwebender Buchstabe; Zuordnung in `EXTRA_MODELS` in `arena_view_3d.gd`. Ungenutzt: `key`, `chest`, `column`, `rocks`.
-- Das Menü kennt 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI); Standard ist Mensch gegen AI auf `crossroads.map`. Der Kern kann mehr Spieler.
+- Das Menü kennt 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI); Standard ist Mensch gegen AI auf `Crossroads.map`. Der Kern kann mehr Spieler.
 - Keine Musik (in keinem der Pakete enthalten).
 - Feedback zu Ton, Animationen, Kamera, Wackelstärke und Flammen beim Spielen steht noch aus. Das Gamepad wurde vom Nutzer als funktionierend bestätigt.
 

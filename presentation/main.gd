@@ -31,7 +31,7 @@ func _ready() -> void:
 		if file.ends_with(".map"):
 			_maps.append(file)
 	_maps.sort()
-	var start := _maps.find("crossroads.map")
+	var start := _maps.find("Crossroads.map")
 	_map_index = maxi(start, 0)
 	$UI.add_child(_scoreboard)
 	$UI.add_child(_menu)
