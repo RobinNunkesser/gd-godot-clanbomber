@@ -1,0 +1,94 @@
+name: Export & Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  export:
+    name: Build & Package Test Versions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Godot & Export Templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Create Build Directories
+        run: |
+          mkdir -p builds/windows
+          mkdir -p builds/linux
+          mkdir -p builds/macos
+          mkdir -p builds/web
+
+      - name: Export Windows Desktop
+        run: |
+          godot --headless --export-release "Windows Desktop" builds/windows/ClanBomber.exe
+
+      - name: Export Linux
+        run: |
+          godot --headless --export-release "Linux" builds/linux/ClanBomber.x86_64
+
+      - name: Export macOS
+        run: |
+          godot --headless --export-release "macOS" builds/macos/ClanBomber.zip
+
+      - name: Export Web (HTML5)
+        run: |
+          godot --headless --export-release "Web" builds/web/index.html
+
+      - name: Package ZIP Archives
+        run: |
+          cd builds/windows && zip -r ../../ClanBomber-Windows.zip ClanBomber.exe && cd ../..
+          cd builds/linux && zip -r ../../ClanBomber-Linux.zip ClanBomber.x86_64 && cd ../..
+          cp builds/macos/ClanBomber.zip ClanBomber-macOS.zip
+          cd builds/web && zip -r ../../ClanBomber-Web.zip . && cd ../..
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClanBomber-Windows
+          path: ClanBomber-Windows.zip
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClanBomber-Linux
+          path: ClanBomber-Linux.zip
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClanBomber-macOS
+          path: ClanBomber-macOS.zip
+
+      - name: Upload Web Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClanBomber-Web
+          path: ClanBomber-Web.zip
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ClanBomber-Windows.zip
+            ClanBomber-Linux.zip
+            ClanBomber-macOS.zip
+            ClanBomber-Web.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: true

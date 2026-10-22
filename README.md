@@ -74,6 +74,20 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 `maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). Die Autorenangaben im Dateikopf lauten auf *Robin Nunkesser* (23 Karten), *anonymous hendrik* (13 Karten) und *cjl* (1 Karte) – alle vom Repo-Eigentümer erstellt. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos.
 
+## Export & Testversionen
+
+Das Projekt ist mit Export-Presets (`export_presets.cfg`) für **Windows Desktop**, **Linux**, **macOS** und **Web (HTML5)** konfiguriert:
+
+- **Lokaler Export:**  
+  Im Godot-Editor über `Projekt` $\to$ `Exportieren...` oder auf der Kommandozeile:
+  ```bash
+  godot --headless --export-release "Windows Desktop" builds/windows/ClanBomber.exe
+  ```
+- **Automatisierte Builds via GitHub Actions:**  
+  Unter `.github/workflows/export.yml` ist ein Workflow eingerichtet:
+  - **Manuell:** Kann im GitHub-Web-Interface unter *Actions* $\to$ *Export & Release* $\to$ *Run workflow* jederzeit per Klick ausgelöst werden. Die fertigen ZIP-Dateien (Windows, Linux, macOS, Web) stehen anschließend direkt als Run-Artifacts zum Download bereit.
+  - **Automatisch bei Release:** Wird ein Git-Tag (z. B. `v0.1.0`) gepusht, erzeugt die Action automatisch ein GitHub Release mit allen Plattform-ZIPs als Download-Anhänge.
+
 ## Credits & Third-Party Assets
 
 Ein großes Dankeschön an die Open-Gaming- und Open-Source-Community:

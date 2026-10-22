@@ -1,3 +1,4 @@
 .godot/
 reports/
 *.uid.tmp
+builds/
