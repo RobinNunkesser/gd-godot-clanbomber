@@ -423,19 +423,6 @@ func _make_extra(cell: Vector2i, type: int) -> Node3D:
 	root.add_child(light)
 	root.set_meta("light", light)
 
-	# Schwebender Kennbuchstabe zur schnellen Orientierung
-	var label := Label3D.new()
-	label.text = EXTRA_LETTERS.get(type, "?")
-	label.font_size = 64
-	label.pixel_size = 0.0022
-	label.modulate = color
-	label.outline_size = 16
-	label.outline_modulate = Color.BLACK
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.no_depth_test = true
-	label.position = Vector3(0, 0.55, 0)
-	root.add_child(label)
-
 	add_child(root)
 	return root
 
