@@ -1,10 +1,12 @@
 # ClanBomber Godot
 
-Moderne Godot-4-Neuauflage von *ClanBomber* (2.5D-Präsentation, 2D-Simulationskern). Referenzprojekt für agentische Spieleentwicklung.
+> **A clean-room reimplementation inspired by the classic 1998 open-source game *ClanBomber*.**
+
+Moderne Godot-4-Neuauflage (2.5D-Präsentation, 2D-Simulationskern). Referenzprojekt für agentische Spieleentwicklung und offener Community-Remake.
 
 Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot/` mit `GDD.md` (normativ) und `docs/reference/ORIGINAL_BEHAVIOR.md` (Verhalten des Originals, Clean-Room-Referenz).
 
-Aktueller Stand und nächste Schritte: [STATUS.md](STATUS.md).
+Aktueller Stand und nächste Schritte: [STATUS.md](STATUS.md). Details zu Lizenzen und Drittinhalten: [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Stand: Slice 7 (Rundenverwaltung)
 
@@ -72,6 +74,25 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 `maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). Die Autorenangaben im Dateikopf lauten auf *Robin Nunkesser* (23 Karten), *anonymous hendrik* (13 Karten) und *cjl* (1 Karte) – alle vom Repo-Eigentümer erstellt.  Die 33 Originalkarten liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos.
 
+## Credits & Third-Party Assets
+
+Ein großes Dankeschön an die Open-Gaming- und Open-Source-Community:
+
+- **3D-Assets & Audio von Kenney ([kenney.nl](https://kenney.nl)):**
+  - 3D-Modelle aus dem *Platformer Kit* und *Mini-Dungeon* (Figuren, Blöcke, Fässer, Bomben, Fallen).
+  - Soundeffekte aus den Kenney-Audio-Paketen (*Impact*, *Digital*, *Sci-Fi*, *Interface*).
+  - Alle Kenney-Assets sind unter **CC0 1.0 Universal** (Public Domain Dedication) lizenziert.
+- **Unit-Testing Framework:**
+  - [GdUnit4](https://github.com/MikeSchulze/gdUnit4) von Mike Schulze (lizenziert unter der MIT-Lizenz).
+- **Historische Inspiration:**
+  - Inspiriert durch das klassische Open-Source-Multiplayerspiel *ClanBomber* (1998–2002 von Denis Oliver Kropp, Andreas Hundt und Mitwirkenden).
+
+## Disclaimer & Rechtliche Hinweise
+
+- **Eigenständigkeit:** Dieses Spiel ist eine eigenständige Clean-Room-Neuimplementierung *from scratch* in Godot Engine 4. Es verwendet keinerlei Quellcode, Binärdateien oder urheberrechtlich geschützte Assets des historischen C++-Spiels *ClanBomber* oder der *ClanLib*-Bibliothek.
+- **Markenhinweis:** *Bomberman* ist eine eingetragene Marke von Konami Digital Entertainment Co., Ltd. Dieses Projekt ist ein nicht-kommerzielles Bildungs- und Community-Projekt und steht in keiner geschäftlichen oder offiziellen Verbindung zu Konami Digital Entertainment, Hudson Soft oder den ursprünglichen Autoren von *ClanBomber*.
+
 ## Lizenz
 
-Code und eigene Karten: MIT (`LICENSE`). Drittkomponenten und Abgrenzung zum Original: `THIRD_PARTY.md`. Original-Sounds und -Grafiken werden nicht übernommen (Herkunft ungeklärt), Sounds kommen aus CC0-Quellen (Kenney).
+Code, eigene Karten und neu erstellte PBR-Texturen: **MIT-Lizenz** ([LICENSE](LICENSE)).  
+Ausführliche Lizenz- und Drittkomponenten-Nachweise: [THIRD_PARTY.md](THIRD_PARTY.md).
