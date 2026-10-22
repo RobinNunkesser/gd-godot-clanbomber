@@ -180,7 +180,7 @@ func _make_tile_root(cell: Vector2i, tile: int) -> void:
 			add_child(crate)
 			_boxes[cell] = crate
 		SimTile.Type.ICE:
-			root.add_child(_add_plane(_material(Color(0.6, 0.85, 1.0, 0.55), true), Vector3(0, 0.02, 0)))
+			root.add_child(_add_plane(_ice_material(), Vector3(0, 0.025, 0)))
 		SimTile.Type.TRAP:
 			var trap: Node3D = TRAP_SCENE.instantiate()
 			trap.scale = Vector3(0.9, 0.5, 0.9)
@@ -579,3 +579,21 @@ func _flame_material() -> StandardMaterial3D:
 	material.emission_energy_multiplier = 2.0
 	_materials[key] = material
 	return material
+
+
+func _ice_material() -> StandardMaterial3D:
+	var key := "tile_ice"
+	if _materials.has(key):
+		return _materials[key]
+	var material := StandardMaterial3D.new()
+	var tex := load("res://assets/textures/tiles/tile_ice.png") as Texture2D
+	if tex != null:
+		material.albedo_texture = tex
+	material.albedo_color = Color(0.9, 0.95, 1.0, 0.92)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.roughness = 0.08
+	material.metallic = 0.15
+	material.specular = 0.8
+	_materials[key] = material
+	return material
+
