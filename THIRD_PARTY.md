@@ -28,3 +28,7 @@ Der Code ist eine vollständige Clean-Room-Neuimplementierung auf Basis einer fu
 
 - **Unabhängigkeit:** Dieses Projekt ist ein unabhängiges Open-Source-Community-Remake und steht in keiner geschäftlichen oder offiziellen Verbindung zu den ursprünglichen Autoren von *ClanBomber* oder der *ClanLib*.
 - **Markenhinweis:** *Bomberman* ist eine eingetragene Marke der Konami Digital Entertainment Co., Ltd. Dieses Projekt dient rein experimentellen, didaktischen und nicht-kommerziellen Zwecken.
+
+## App-Icon
+
+`assets/icon.png` wurde mit einem KI-Bildgenerator für dieses Projekt erzeugt (MIT, wie der Code).
