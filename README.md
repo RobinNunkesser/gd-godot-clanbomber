@@ -96,6 +96,8 @@ Ein großes Dankeschön an die Open-Gaming- und Open-Source-Community:
   - 3D-Modelle aus dem *Platformer Kit* und *Mini-Dungeon* (Figuren, Blöcke, Fässer, Bomben, Fallen).
   - Soundeffekte aus den Kenney-Audio-Paketen (*Impact*, *Digital*, *Sci-Fi*, *Interface*).
   - Alle Kenney-Assets sind unter **CC0 1.0 Universal** (Public Domain Dedication) lizenziert.
+- **Retro-Hintergrundmusik (BGM):**
+  - Chiptune-Tracks *"Title Screen"* und *"Level 1"* aus der Sammlung *"5 Chiptunes (Action)"* von **Juhani Junkala (SubspaceAudio)** via OpenGameArt (**CC0 1.0 Universal**).
 - **Unit-Testing Framework:**
   - [GdUnit4](https://github.com/MikeSchulze/gdUnit4) von Mike Schulze (lizenziert unter der MIT-Lizenz).
 - **Historische Inspiration:**

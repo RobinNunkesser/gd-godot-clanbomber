@@ -82,7 +82,8 @@ Präsentation:
 - Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
 - Extras sind Mini-Dungeon-Modelle (`weapon-sword` Power, `pot` Bomb, `coin` Skateboard, `weapon-spear` Kick, `shield-round` Glove, `potion` für die drei Krankheiten, farblich getönt) plus schwebender Buchstabe; Zuordnung in `EXTRA_MODELS` in `arena_view_3d.gd`. Ungenutzt: `key`, `chest`, `column`, `rocks`.
 - Das Menü kennt 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI); Standard ist Mensch gegen AI auf `Crossroads.map`. Der Kern kann mehr Spieler.
-- Keine Musik (in keinem der Pakete enthalten).
+- Steuerung & Hilfe sowie "Spiel beenden" sind direkt ins Startmenü integriert.
+- Retro-Chiptune-Hintergrundmusik (`assets/audio/music/`, CC0) für Menü und Gameplay integriert, Mute-Taste `M`.
 - Feedback zu Ton, Animationen, Kamera, Wackelstärke und Flammen beim Spielen steht noch aus. Das Gamepad wurde vom Nutzer als funktionierend bestätigt.
 
 ## Nächste Schritte (Vorschlag, in dieser Reihenfolge)
@@ -92,8 +93,8 @@ Präsentation:
 3. ~~Rundenverwaltung~~ (erledigt, Slice 7; der Kern kann beliebig viele Spieler, das Menü bietet 4 Plätze).
 4. ~~AI~~ (einfache Heuristik erledigt, Slice 8). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden viele Runden passiv erst im Sudden Death. Verbesserung: aktiver auf den Gegner zulaufen, Schwierigkeitsgrade.
 5. **Karten-UI:** Karten mit zu wenigen Startfeldern im Menü ausblenden (bisher nur übersprungen), Anzeigenamen getrennt vom Dateinamen.
-6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad). Gamepad bestätigt. Offen: Tastenbelegung ändern, mehr als 4 Spieler.
-7. **Optik:** Juice-Stufe 1 erledigt (`effects_3d.gd`: Kamerawackeln, Partikel für Explosion/Kisten/Pickup/Tod/Bombe/Sudden-Death-Löcher, Lichtblitze, Bloom, Flammen wachsen ein, Bomben-Squash). Flammen sind jetzt Kegel-Modelle mit Kern und Funken. Offen: Figuren-Squash/Hit-Stop, Musik.
+6. ~~Menü~~ (erledigt, Slice 9: Spielerzahl, Karte/Zufall, Punkte, Gamepad, Steuerungshilfe & Beenden). Gamepad bestätigt. Offen: Tastenbelegung ändern, mehr als 4 Spieler.
+7. **Optik & Audio:** Juice-Stufe 1 erledigt (`effects_3d.gd`), CC0-BGM integriert. Offen: Figuren-Squash/Hit-Stop, Spezialfeld-Decals.
 8. **Kids-Mode** (Cube Pets).
 
 Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentation, dann README und diese Datei aktualisieren.

@@ -8,16 +8,17 @@ Dieses Repository (Code, eigene Karten und neu erstellte Assets) steht final unt
 | **Eigene Texturen** (`assets/textures/`) | MIT | Neu erstellte PBR-Assets (Münz-Tokens, nahtloses Eis, Schiefer-Steinboden, Himmels-Skybox) |
 | **GdUnit4 v6.2.2** (`addons/gdUnit4/`) | MIT (`addons/gdUnit4/LICENSE`) | Test-Framework, Autor Mike Schulze |
 | **Kenney-Assets** (`assets/audio/`, `assets/models/`) | CC0 1.0 Universal | Public Domain Dedication (kenney.nl); freie Nutzung ohne Copyleft |
+| **Musik / BGM** (`assets/audio/music/`) | CC0 1.0 Universal | "5 Chiptunes (Action)" von Juhani Junkala (SubspaceAudio) via OpenGameArt |
 | **Eigene Karten** (`maps/`) | MIT | 37 vom Autor erstellte Karten (Autoren im Dateikopf: *Robin Nunkesser*, *anonymous hendrik*, *cjl*) |
 | **Originalkarten von ClanBomber** | GPL-2.0-or-later | **Nicht in diesem Repo.** Separates Datenpaket `gd-godot-clanbomber-original-maps` |
 | **Originalsounds/-grafiken von ClanBomber** | Herkunft ungeklärt | **Nicht übernommen.** Vollständig durch CC0- und Neuschöpfungen ersetzt |
 
-## Kenney-Assets (Danksagung & Attribution)
+## Musik & Audio (Danksagung & Attribution)
 
-Die visuellen 3D-Modelle und Audio-Effekte stammen aus den frei verfügbaren Sammlungen von **Kenney** ([https://kenney.nl](https://kenney.nl)):
-- **3D-Modelle:** Platformer Kit und Mini-Dungeon (Figuren, Blöcke, Fässer, Bomben, Fallen).
-- **Soundeffekte:** Audio-Packs *Impact*, *Digital*, *Sci-Fi*, *Interface*.
-- **Lizenz:** **CC0 1.0 Universal** (Public Domain Dedication). Die Nennung erfolgt freiwillig als Dank für herausragende Unterstützung der Spieleentwickler-Community.
+- **Soundeffekte & 3D-Modelle:** Frei verfügbare Sammlungen von **Kenney** ([https://kenney.nl](https://kenney.nl), CC0 1.0 Universal).
+- **Hintergrundmusik:** Aus der Sammlung *"5 Chiptunes (Action)"* von **Juhani Junkala (SubspaceAudio)** ([OpenGameArt](https://opengameart.org/content/5-chiptunes-action), CC0 1.0 Universal):
+  - `music_menu.ogg` (Titel-/Menü-Theme)
+  - `music_game.ogg` (Gameplay-Theme)
 
 ## Abgrenzung zum Original (Clean-Room-Status)
 

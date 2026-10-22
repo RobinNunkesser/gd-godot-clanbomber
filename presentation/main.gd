@@ -24,9 +24,15 @@ var _round_over := false
 var _continue_unlock_at := 0
 var _menu := GameMenu.new()
 var _ais: Dictionary = {}
+var _bgm := AudioStreamPlayer.new()
+var _menu_music: AudioStream
+var _game_music: AudioStream
 
 
 func _ready() -> void:
+	add_child(_bgm)
+	_menu_music = _load_looping_stream("res://assets/audio/music/music_menu.ogg")
+	_game_music = _load_looping_stream("res://assets/audio/music/music_game.ogg")
 	for file in DirAccess.get_files_at(MAP_DIR):
 		if file.ends_with(".map"):
 			_maps.append(file)
@@ -37,6 +43,28 @@ func _ready() -> void:
 	$UI.add_child(_menu)
 	_menu.maps = _maps
 	_menu.start_requested.connect(_start_match)
+	_open_menu()
+
+
+func _load_looping_stream(path: String) -> AudioStream:
+	if not ResourceLoader.exists(path):
+		return null
+	var stream: AudioStream = load(path)
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	return stream
+
+
+func _play_music(stream: AudioStream, volume_db := -8.0) -> void:
+	if stream == null or _bgm.stream == stream:
+		return
+	_bgm.stream = stream
+	_bgm.volume_db = volume_db
+	_bgm.play()
+
+
+func _open_menu() -> void:
+	_play_music(_menu_music, -8.0)
 	_menu.open()
 
 
@@ -81,7 +109,7 @@ func _try_load_current_map() -> bool:
 	view.world = _world
 	view3d.bind(_world)
 	_round_over = false
-	banner.text = "%s  (von %s)" % [_maps[_map_index].get_basename(), data.author]
+	banner.text = "%s  (von %s)       [Esc] Menü  |  [F2] 3D/2D  |  [R] Reset  |  [M] Mute" % [_maps[_map_index].get_basename(), data.author]
 	view.queue_redraw()
 	return true
 
@@ -114,7 +142,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_ENTER, KEY_KP_ENTER:
 			_bomb_for_controller(GameConfig.Controller.KEYBOARD_2)
 		KEY_ESCAPE:
-			_menu.open()
+			_open_menu()
+		KEY_M:
+			AudioServer.set_bus_mute(0, not AudioServer.is_bus_mute(0))
 		KEY_N:
 			_load_map(1)
 		KEY_P:
@@ -154,6 +184,7 @@ func _start_match() -> void:
 	if not config.is_random_map():
 		_map_index = maxi(_maps.find(config.map_name), 0)
 	_load_map(1 if config.is_random_map() else 0)
+	_play_music(_game_music, -10.0)
 	sfx.play("ui_select")
 
 
@@ -168,7 +199,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if button.button_index == JOY_BUTTON_A:
 		_bomb_for_controller(GameConfig.Controller.PAD_1 + button.device)
 	elif button.button_index == JOY_BUTTON_START:
-		_menu.open()
+		_open_menu()
 
 
 func _bomb_for_controller(controller: int) -> void:
