@@ -24,6 +24,16 @@ const EXTRA_MODELS := {
 	SimExtra.Type.REVERSE: "res://assets/models/mini-dungeon/potion.glb",
 	SimExtra.Type.AUTOBOMB: "res://assets/models/mini-dungeon/potion.glb",
 }
+const EXTRA_TEXTURES := {
+	SimExtra.Type.POWER: "res://assets/textures/drops/token_power.png",
+	SimExtra.Type.BOMB: "res://assets/textures/drops/token_bomb.png",
+	SimExtra.Type.SKATEBOARD: "res://assets/textures/drops/token_skate.png",
+	SimExtra.Type.KICK: "res://assets/textures/drops/token_kick.png",
+	SimExtra.Type.GLOVE: "res://assets/textures/drops/token_glove.png",
+	SimExtra.Type.OVERDRIVE: "res://assets/textures/drops/token_overdrive.png",
+	SimExtra.Type.REVERSE: "res://assets/textures/drops/token_reverse.png",
+	SimExtra.Type.AUTOBOMB: "res://assets/textures/drops/token_autobomb.png",
+}
 const EXTRA_COLORS := {
 	SimExtra.Type.POWER: Color("ff7043"), SimExtra.Type.BOMB: Color("90a4ae"),
 	SimExtra.Type.SKATEBOARD: Color("66bb6a"), SimExtra.Type.KICK: Color("42a5f5"),
@@ -337,38 +347,95 @@ func _sync_extras() -> void:
 		if not _extras.has(cell):
 			_extras[cell] = _make_extra(cell, world.extras[cell])
 		var node: Node3D = _extras[cell]
-		node.position.y = 0.45 + 0.08 * sin(_time * 3.0 + cell.x)
-		(node.get_meta("spinner") as Node3D).rotation.y = _time * 1.5
+		var phase: float = _time * 3.2 + float(cell.x * 2 + cell.y)
+		# Sanftes Schweben
+		node.position.y = 0.20 + 0.035 * sin(phase)
+
+		# Flache Drehung + feines Trudeln (Wobble), damit die Münze das Studio-Licht reflektiert
+		var spinner: Node3D = node.get_meta("spinner")
+		spinner.rotation.x = sin(phase * 1.3) * 0.10
+		spinner.rotation.y = cos(phase * 1.3) * 0.10
+		spinner.rotation.z = _time * 0.5 # Flache Drehung um die eigene Flächennormale
+		var s: float = 1.0 + 0.04 * sin(phase * 1.5)
+		spinner.scale = Vector3(s, s, s)
+
+		# Pulsierendes Bodenlicht
+		if node.has_meta("light"):
+			var l: OmniLight3D = node.get_meta("light")
+			l.light_energy = 0.55 + 0.25 * sin(phase * 2.0)
 
 
 func _make_extra(cell: Vector2i, type: int) -> Node3D:
 	var root := Node3D.new()
 	root.set_meta("type", type)
-	root.position = Vector3(cell.x + 0.5, 0.45, cell.y + 0.5)
-	var model: Node3D = load(EXTRA_MODELS.get(type, "res://assets/models/mini-dungeon/potion.glb")).instantiate()
+	root.position = Vector3(cell.x + 0.5, 0.20, cell.y + 0.5)
+
 	var pivot := Node3D.new()
-	pivot.rotation.x = 0.7
+	# Exakt zur 78°-Topdown-Kamera geneigt: Münzfläche bleibt immer voll sichtbar
+	pivot.rotation.x = -deg_to_rad(78.0)
 	root.add_child(pivot)
+
 	var spinner := Node3D.new()
 	pivot.add_child(spinner)
-	spinner.add_child(model)
 	root.set_meta("spinner", spinner)
-	_fit_model(model, 1.0)
-	if type in DISEASES:
-		var tint := _material(EXTRA_COLORS[type])
-		for mi in model.find_children("*", "MeshInstance3D", true, false):
-			(mi as MeshInstance3D).material_override = tint
+
+	var color: Color = EXTRA_COLORS.get(type, Color("ffd54f"))
+
+	var tex_path: String = EXTRA_TEXTURES.get(type, "")
+	if tex_path != "" and ResourceLoader.exists(tex_path):
+		var sprite := Sprite3D.new()
+		sprite.texture = load(tex_path)
+		sprite.pixel_size = 0.00075 # ca. 0.77m Durchmesser bei 1024px
+		sprite.double_sided = true
+		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		spinner.add_child(sprite)
+
+		# 3D Metallic-Fassung (Ring) um den Token
+		var ring := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.35
+		torus.outer_radius = 0.39
+		torus.rings = 24
+		torus.ring_segments = 12
+		ring.mesh = torus
+		ring.rotation.x = PI / 2.0
+		var ring_mat := StandardMaterial3D.new()
+		ring_mat.albedo_color = color
+		ring_mat.metallic = 0.85
+		ring_mat.roughness = 0.25
+		ring.material_override = ring_mat
+		spinner.add_child(ring)
+	else:
+		var model: Node3D = load(EXTRA_MODELS.get(type, "res://assets/models/mini-dungeon/potion.glb")).instantiate()
+		spinner.add_child(model)
+		_fit_model(model, 1.0)
+		if type in DISEASES:
+			var tint := _material(color)
+			for mi in model.find_children("*", "MeshInstance3D", true, false):
+				(mi as MeshInstance3D).material_override = tint
+
+	# Zartes Bodenlicht in der Farbe des Extras für Aufmerksamkeit
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.omni_range = 1.2
+	light.light_energy = 0.6
+	light.position = Vector3(0, 0.05, 0)
+	root.add_child(light)
+	root.set_meta("light", light)
+
+	# Schwebender Kennbuchstabe zur schnellen Orientierung
 	var label := Label3D.new()
 	label.text = EXTRA_LETTERS.get(type, "?")
-	label.font_size = 128
-	label.pixel_size = 0.0032
-	label.modulate = EXTRA_COLORS.get(type, Color.WHITE)
-	label.outline_size = 24
+	label.font_size = 64
+	label.pixel_size = 0.0022
+	label.modulate = color
+	label.outline_size = 16
 	label.outline_modulate = Color.BLACK
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.position = Vector3(0, 1.0, 0)
+	label.position = Vector3(0, 0.55, 0)
 	root.add_child(label)
+
 	add_child(root)
 	return root
 
