@@ -1,8 +1,8 @@
 extends Node2D
 ## Spielbarer Prototyp: lädt eine Karte, speist die Simulation und liest Eingaben.
-## Startmenü (Esc öffnet es): Steuerung je Platz (Tastatur 1/2, Gamepad 1-4, AI), Karte, Punkte.
+## Startmenü (Esc öffnet es): Steuerung je Platz (Tastatur 1/2, Gamepad 1-4, AI), Kartenauswahl, Punkte.
 ## Tastatur 1: WASD + Leertaste, Tastatur 2: Pfeiltasten + Enter, Gamepad: D-Pad/linker Stick + A.
-## N/P: nächste/vorherige Karte, R: Runde neu starten, F5: neues Match, M: Mute.
+## R: Runde neu starten, F5: neues Match, M: Mute. (N = nächste Karte, F1/F3: Testhilfen, nicht in der Bedienung genannt.)
 
 const MAP_DIR := "res://maps"
 const SETTINGS_PATH := "user://settings.cfg"
@@ -127,10 +127,9 @@ func _player_name(id: int) -> String:
 	return _menu.config.name_of(id - 1)
 
 
-# Lädt die nächste Karte. Bei fester Karte schalten N/P (step +-1) durch alle für die Spielerplätze spielbaren
-# Karten, step 0 lädt dieselbe Karte neu. Bei "Zufall" (Turnier) zieht jeder Schritt != 0 die nächste Karte der
-# gemischten Kartenauswahl; step 0 startet nur die Runde neu.
-func _load_map(step: int) -> void:
+# Lädt die Karte für die nächste Runde: mit `advance` die nächste Karte der Kartenauswahl (zufällig oder der
+# Reihe nach laut Menü), sonst dieselbe Karte neu.
+func _load_map(advance: bool) -> void:
 	if _match.state == SimMatch.State.MATCH_OVER:
 		_match.reset()
 	_match.start_next_round()
@@ -141,15 +140,9 @@ func _load_map(step: int) -> void:
 		banner.text = "Keine passende Karte gefunden"
 		return
 	var map_name := _current_map
-	if config.is_random_map():
-		if step != 0 or not playable.has(map_name):
-			map_name = _rotation.next(config.effective_pool(playable), _rng)
-	else:
-		var index := playable.find(map_name)
-		if index < 0:
-			index = maxi(playable.find(config.map_name), 0)
-			step = 0
-		map_name = playable[posmod(index + step, playable.size())]
+	if advance or not playable.has(map_name):
+		var pool := config.effective_pool(playable)
+		map_name = _rotation.next(pool, _rng) if config.random_order else _rotation.next_in_order(pool)
 	if not _try_load_map(map_name):
 		banner.text = "Karte %s konnte nicht geladen werden" % map_name
 
@@ -175,12 +168,10 @@ func _try_load_map(map_name: String) -> bool:
 			_ais[slot + 1] = SimAI.new(slot + 1)
 	_match.register_players(_world.players.keys())
 	_current_map = map_name
-	if not config.is_random_map():
-		config.map_name = map_name
 	_connect_sounds()
 	view3d.bind(_world)
 	_round_over = false
-	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [N] Nächste Karte  |  [R] Reset" % [map_name.get_basename(), data.author]
+	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [R] Reset" % [map_name.get_basename(), data.author]
 	return true
 
 
@@ -258,14 +249,12 @@ func _input(event: InputEvent) -> void:
 				if _menu.config.is_sfx_enabled():
 					sfx.play("ui_select")
 			KEY_N:
-				_load_map(1)
-			KEY_P:
-				_load_map(-1)
+				_load_map(true)  # Testhilfe: nächste Karte der Auswahl
 			KEY_R:
-				_load_map(0)
+				_load_map(false)
 			KEY_F5:
 				_match.reset()
-				_load_map(0)
+				_load_map(false)
 			KEY_F3:
 				_world.round_time_ms = mini(_world.round_time_ms, 2000)
 			KEY_F1:
@@ -287,7 +276,7 @@ func _handle_scoreboard_input(event: InputEvent) -> void:
 			_continue_after_scoreboard()
 		elif code == KEY_F5:
 			_match.reset()
-			_load_map(0)
+			_load_map(false)
 	elif event is InputEventJoypadButton:
 		var button := event as InputEventJoypadButton
 		if button.button_index == JOY_BUTTON_A and Time.get_ticks_msec() >= _continue_unlock_at:
@@ -326,19 +315,19 @@ func _is_confirm(event: InputEvent) -> bool:
 
 func _continue_after_scoreboard() -> void:
 	sfx.play("ui_select")
-	_load_map(1 if _menu.config.is_random_map() else 0)
+	_load_map(true)
 
 
-# Neues Match mit den Menüeinstellungen. Eine feste Karte bleibt über alle Runden gleich,
-# bei "Zufall" läuft das Turnier durch die gemischte Kartenauswahl.
+# Neues Match mit den Menüeinstellungen; die Karten laufen nach der Kartenauswahl (zufällig oder der Reihe nach),
+# nach jeder Runde folgt die nächste.
 func _start_match() -> void:
 	var config := _menu.config
 	config.save_to(SETTINGS_PATH)
 	_menu.is_game_active = true
 	_match = SimMatch.new(config.points_to_win)
 	_rotation.reset()
-	_current_map = "" if config.is_random_map() else config.map_name
-	_load_map(1 if config.is_random_map() else 0)
+	_current_map = ""
+	_load_map(true)
 	_play_music(_game_music, -10.0)
 	sfx.play("ui_select")
 

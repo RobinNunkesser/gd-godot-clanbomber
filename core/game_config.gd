@@ -1,12 +1,11 @@
 class_name GameConfig
 extends RefCounted
-## Matcheinstellungen aus dem Menü: Steuerung, Namen und Teams je Spielerplatz, Karte, Kartenauswahl (Turnier),
+## Matcheinstellungen aus dem Menü: Steuerung, Namen und Teams je Spielerplatz, Kartenauswahl samt Reihenfolge,
 ## Punkte zum Sieg, Sudden-Death-Zeit und Lautstärken. Lässt sich als ConfigFile speichern und laden.
 
 enum Controller { OFF, KEYBOARD_1, KEYBOARD_2, PAD_1, PAD_2, PAD_3, PAD_4, AI }
 
 const SLOT_COUNT := 4
-const RANDOM_MAP := -1
 const MIN_POINTS := 1
 const MAX_POINTS := 10
 const NAMES := {
@@ -37,9 +36,9 @@ const VOLUME_DBS: Array[float] = [-80.0, -18.0, -10.0, -4.0, 0.0]
 var slots: Array[int] = [Controller.KEYBOARD_1, Controller.AI, Controller.OFF, Controller.OFF]
 var names: Array[String] = ["", "", "", ""]
 var teams: Array[int] = [0, 0, 0, 0]
-# "" = Zufall: Turnier über die Karten aus map_pool, sonst eine feste Karte.
-var map_name := "Crossroads.map"
+# Karten, die im Match gespielt werden; nach jeder Runde folgt die nächste (zufällig oder der Reihe nach).
 var map_pool: Array[String] = []
+var random_order := true
 var points_to_win := SimConstants.POINTS_TO_WIN
 var round_time_s := DEFAULT_ROUND_TIME_S
 
@@ -153,16 +152,19 @@ func round_time_ms() -> int:
 
 # --- Karten ---
 
-# Zeigt auf die nächste Karte; "" steht für Zufall und liegt vor der ersten Karte.
-func cycle_map(maps: Array[String], step: int) -> void:
-	var options: Array[String] = [""]
-	options.append_array(maps)
-	var index := options.find(map_name)
-	map_name = options[posmod(index + step, options.size())]
+func order_label() -> String:
+	return "Zufällig" if random_order else "Der Reihe nach"
 
 
-func is_random_map() -> bool:
-	return map_name == ""
+func select_all(playable: Array[String]) -> void:
+	for map in playable:
+		if not map_pool.has(map):
+			map_pool.append(map)
+
+
+# Nur diese Karte (Taste S im Original).
+func select_only(map: String) -> void:
+	map_pool = [map]
 
 
 func is_in_pool(map: String) -> bool:
@@ -247,8 +249,8 @@ func save_to(path: String) -> Error:
 	file.set_value("match", "slots", slots)
 	file.set_value("match", "names", names)
 	file.set_value("match", "teams", teams)
-	file.set_value("match", "map", map_name)
 	file.set_value("match", "map_pool", map_pool)
+	file.set_value("match", "random_order", random_order)
 	file.set_value("match", "points_to_win", points_to_win)
 	file.set_value("match", "round_time_s", round_time_s)
 	file.set_value("audio", "music", music_volume)
@@ -274,9 +276,7 @@ func load_from(path: String, known_maps: Array[String]) -> void:
 	var saved_teams: Array = file.get_value("match", "teams", [])
 	for slot in mini(saved_teams.size(), SLOT_COUNT):
 		teams[slot] = clampi(int(saved_teams[slot]), 0, TEAM_COUNT)
-	var saved_map := str(file.get_value("match", "map", map_name))
-	if saved_map == "" or known_maps.has(saved_map):
-		map_name = saved_map
+	random_order = bool(file.get_value("match", "random_order", random_order))
 	var saved_pool: Array = file.get_value("match", "map_pool", [])
 	map_pool = []
 	for value in saved_pool:

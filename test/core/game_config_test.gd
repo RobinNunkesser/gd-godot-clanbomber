@@ -41,16 +41,16 @@ func test_points_are_clamped() -> void:
 	assert_int(config.points_to_win).is_equal(GameConfig.MIN_POINTS)
 
 
-func test_map_cycle_includes_random() -> void:
+func test_select_all_and_only() -> void:
 	var config := GameConfig.new()
-	var maps: Array[String] = ["a.map", "b.map"]
-	config.map_name = "b.map"
-	config.cycle_map(maps, 1)
-	assert_bool(config.is_random_map()).is_true()
-	config.cycle_map(maps, 1)
-	assert_str(config.map_name).is_equal("a.map")
-	config.cycle_map(maps, -2)
-	assert_str(config.map_name).is_equal("b.map")
+	var playable: Array[String] = ["a.map", "b.map", "c.map"]
+	config.select_only("b.map")
+	assert_array(config.map_pool).is_equal(["b.map"])
+	config.select_all(playable)
+	assert_int(config.map_pool.size()).is_equal(3)
+	assert_str(config.order_label()).is_equal("Zufällig")
+	config.random_order = false
+	assert_str(config.order_label()).is_equal("Der Reihe nach")
 
 
 func test_pad_device() -> void:
@@ -180,7 +180,7 @@ func test_save_and_load_roundtrip() -> void:
 	config.slots = [GameConfig.Controller.KEYBOARD_2, GameConfig.Controller.PAD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF]
 	config.set_name(0, "Robin")
 	config.teams = [1, 1, 0, 0]
-	config.map_name = ""
+	config.random_order = false
 	config.map_pool = ["b.map"]
 	config.points_to_win = 7
 	config.round_time_s = 45
@@ -192,7 +192,7 @@ func test_save_and_load_roundtrip() -> void:
 	assert_array(loaded.slots).is_equal(config.slots)
 	assert_str(loaded.name_of(0)).is_equal("Robin")
 	assert_array(loaded.teams).is_equal([1, 1, 0, 0])
-	assert_str(loaded.map_name).is_equal("")
+	assert_bool(loaded.random_order).is_false()
 	assert_array(loaded.map_pool).is_equal(["b.map"])
 	assert_int(loaded.points_to_win).is_equal(7)
 	assert_int(loaded.round_time_s).is_equal(45)
@@ -215,7 +215,7 @@ func test_load_ignores_unknown_maps_and_invalid_values() -> void:
 	var loaded := GameConfig.new()
 	loaded.load_from(path, known)
 	assert_array(loaded.slots).is_equal([GameConfig.Controller.KEYBOARD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF])
-	assert_str(loaded.map_name).is_equal("Crossroads.map")
+	assert_bool(loaded.random_order).is_true()
 	assert_array(loaded.map_pool).is_equal(["a.map"])
 	assert_int(loaded.points_to_win).is_equal(GameConfig.MAX_POINTS)
 	assert_int(loaded.round_time_s).is_equal(GameConfig.DEFAULT_ROUND_TIME_S)

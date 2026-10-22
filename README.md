@@ -21,11 +21,11 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` (Extras) | Aufnahme per Betreten, Obergrenzen, Heilen durch jede Aufnahme (Krankheits-Extra taucht neu auf), Overdrive/Reverse/Autobomb (10 s), Ansteckung, Extras fallen beim Tod |
 | `sim_bomb.gd`, `sim_movement.gd` | Kick (Bombe rollt mit 160 px/s bis zum Hindernis und schnappt ein), Wurf mit Glove (4 Zellen, Zünder steht während des Flugs, Wände und Boxen halten an, auf besetzter Landezelle eine Zelle weiter) |
 | `sim_world.gd` (Kacheln) | Ice: Figuren rutschen mit 80 px/s in Blickrichtung weiter, gerollte Bomben werden schneller. Arrow: schiebt Bomben in Pfeilrichtung, entgegenkommende Bomben werden 0,5 s gehalten und umgelenkt. Trap: hält Bomben 1 s, dann Flug (200 px/s, über Wände) auf ein zufälliges freies Feld, dort Zünder 10 ms |
-| `map_catalog.gd`, `map_rotation.gd` | Kartenkatalog mit Filter nach Startplätzen (`is_playable`, `playable`) und Turnier-Rotation (Shuffle-Bag über ausgewählten Karten-Pool) |
+| `map_catalog.gd`, `map_rotation.gd` | Kartenkatalog mit Filter nach Startplätzen (`is_playable`, `playable`) und Kartenrotation (Shuffle-Bag oder der Reihe nach über die ausgewählten Karten) |
 | `sim_match.gd` | Runden- und Teamverwaltung: Rundenende (höchstens eine überlebende Partei), Teampunkte, Siegesbedingung (Einzelspieler: Punkte zum Sieg; Team: `team_points >= team_size * points_to_win`), Ranking |
 | `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Einstellbare Rundenzeit (15–300 s, Standard 90 s): Observer fliegt zu zufälligen Feldern, Boden wird zu Löchern, Mauern zu Boden, Boxen zerbrechen |
 | `sim_ai.gd` | Heuristik-AI: flieht aus Gefahrenzonen, legt Bomben nur mit Fluchtweg, sprengt Boxen, jagt Gegner (ignoriert Teamkameraden), sammelt Extras |
-| `game_config.gd` | Matcheinstellungen mit Persistenz: 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI), eigene Spielernamen, Teams (Blood, Gold, Water, Leaf), Kartenfilter & Turnier-Pool, Sudden Death Zeit, Punkte (1-10) und Audio-Lautstärken |
+| `game_config.gd` | Matcheinstellungen mit Persistenz: 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI), eigene Spielernamen, Teams (Blood, Gold, Water, Leaf), Kartenauswahl (Pool, Reihenfolge zufällig oder der Reihe nach), Sudden Death Zeit, Punkte (1-10) und Audio-Lautstärken |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
 ## Spiel starten & Steuerung
@@ -34,7 +34,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 
 | Taste | Aktion |
 |---|---|
-| Menü: ↑↓ ←→, Enter / Leertaste / Gamepad A | Navigation, Werte anpassen, Submenüs ("Namen & Teams", "Kartenauswahl") öffnen |
+| Menü: ↑↓ ←→, Enter / Leertaste / Gamepad A | Navigation, Werte anpassen, Submenüs ("Namen & Teams", "Karten wählen") öffnen |
 | Menü: Esc / Gamepad B / Back | Zurück ins Hauptmenü / Spiel fortsetzen |
 | Menü: Beenden | Spiel beenden (`get_tree().quit()`) |
 | Esc / Gamepad Start | Spiel pausieren / Hauptmenü öffnen |
@@ -42,7 +42,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Tastatur 1: WASD, Leertaste | bewegen, Bombe legen |
 | Tastatur 2: Pfeiltasten, Enter | bewegen, Bombe legen |
 | Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-4 im Menü zuordnen) |
-| N / P / R | nächste / vorherige Karte / Runde neu starten |
+| R | Runde neu starten |
 | M | Musik stummschalten / aktivieren (Mute) |
 | F4 | Ton-Effekte stummschalten / aktivieren (Mute) |
 | F5 | Neues Match (Punkte zurücksetzen) |

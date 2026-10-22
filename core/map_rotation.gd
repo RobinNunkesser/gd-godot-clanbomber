@@ -28,6 +28,16 @@ func next(pool: Array[String], rng: RandomNumberGenerator) -> String:
 	return _last
 
 
+# Der Reihe nach: die Karte hinter der zuletzt gespielten, nach der letzten wieder die erste.
+# Ist die zuletzt gespielte Karte nicht mehr in der Auswahl, beginnt die Folge von vorn.
+func next_in_order(pool: Array[String]) -> String:
+	if pool.is_empty():
+		return ""
+	_bag.clear()
+	_last = pool[(pool.find(_last) + 1) % pool.size()]
+	return _last
+
+
 func reset() -> void:
 	_bag.clear()
 	_last = ""

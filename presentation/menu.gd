@@ -1,6 +1,6 @@
 class_name GameMenu
 extends PanelContainer
-## Start- und Pausemenü: Steuerung je Spielerplatz, Karte, Kartenauswahl (Turnier), Punkte, Sudden-Death-Zeit,
+## Start- und Pausemenü: Steuerung je Spielerplatz, Kartenauswahl samt Reihenfolge, Punkte, Sudden-Death-Zeit,
 ## Lautstärken, Namen & Teams, Hilfe und Beenden.
 ## Bedienung mit Pfeiltasten/D-Pad, Enter/Leertaste/Gamepad A; Esc/B geht zurück (siehe back()).
 
@@ -12,10 +12,48 @@ signal quit_requested
 enum Mode { MAIN, HELP, PLAYERS, MAPS }
 
 const VISIBLE_MAP_ROWS := 12
-# Im Kartenauswahl-Untermenü stehen vor der Kartenliste zwei Aktionszeilen.
-const MAP_ROW_ALL := 0
-const MAP_ROW_NONE := 1
-const MAP_ROWS_BEFORE_LIST := 2
+
+
+# Kleine Kartenvorschau neben der Kartenliste (wie im Original): Kacheln und Startplätze.
+class MapPreview:
+	extends Control
+
+	const CELL := 15
+	var data: MapData
+	var active_slots: Array[int] = []
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(SimConstants.GRID_WIDTH * CELL, SimConstants.GRID_HEIGHT * CELL)
+
+	func _draw() -> void:
+		if data == null:
+			return
+		for y in SimConstants.GRID_HEIGHT:
+			for x in SimConstants.GRID_WIDTH:
+				var rect := Rect2(x * CELL, y * CELL, CELL - 1, CELL - 1)
+				draw_rect(rect, _tile_color(data.tiles[y * SimConstants.GRID_WIDTH + x]))
+		for slot: int in data.starts:
+			var cell: Vector2i = data.starts[slot]
+			var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
+			if not active_slots.has(slot):
+				color = color.darkened(0.5)
+			draw_circle(Vector2((cell.x + 0.5) * CELL, (cell.y + 0.5) * CELL), CELL * 0.4, color)
+
+	static func _tile_color(type: int) -> Color:
+		match type:
+			SimTile.Type.WALL:
+				return Color("b0b4bc")
+			SimTile.Type.BOX:
+				return Color("a0693a")
+			SimTile.Type.ICE:
+				return Color("9adcf0")
+			SimTile.Type.TRAP:
+				return Color("c0392b")
+			SimTile.Type.HOLE, SimTile.Type.NONE:
+				return Color("000000")
+			SimTile.Type.ARROW_LEFT, SimTile.Type.ARROW_RIGHT, SimTile.Type.ARROW_UP, SimTile.Type.ARROW_DOWN:
+				return Color("3f6fd0")
+		return Color("3a3a3a")
 
 var config := GameConfig.new()
 var catalog := MapCatalog.new()
@@ -28,6 +66,7 @@ var _map_scroll := 0
 var _editing := false
 var _edit_text := ""
 var _text := RichTextLabel.new()
+var _preview := MapPreview.new()
 
 
 func _ready() -> void:
@@ -42,7 +81,14 @@ func _ready() -> void:
 	_text.scroll_active = false
 	_text.add_theme_font_size_override("normal_font_size", 20)
 	_text.add_theme_font_size_override("bold_font_size", 28)
-	add_child(_text)
+	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var box := HBoxContainer.new()
+	box.focus_mode = Control.FOCUS_NONE
+	box.add_child(_text)
+	_preview.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_preview.visible = false
+	box.add_child(_preview)
+	add_child(box)
 	visible = false
 
 
@@ -50,7 +96,6 @@ func open() -> void:
 	visible = true
 	_mode = Mode.MAIN
 	_editing = false
-	_normalize_map()
 	_row = _row_index("resume" if is_game_active else "start")
 	_render()
 
@@ -70,7 +115,6 @@ func back() -> bool:
 	if _mode != Mode.MAIN:
 		_mode = Mode.MAIN
 		_row = _return_row
-		_normalize_map()
 		_render()
 		return true
 	return false
@@ -91,12 +135,9 @@ func _main_rows() -> Array[Dictionary]:
 			"value": value, "adjustable": true})
 	rows.append({"id": "players", "label": "Namen & Teams …", "value": "", "adjustable": false, "gap": true})
 	var playable := catalog.playable(config.active_slots())
-	var map_text := "Zufall (Turnier)"
-	if not config.is_random_map():
-		map_text = "%s · %d Plätze" % [config.map_name.get_basename(), catalog.start_count(config.map_name)]
-	rows.append({"id": "map", "label": "Karte", "value": map_text, "adjustable": true})
-	rows.append({"id": "pool", "label": "Kartenauswahl für Turnier …",
+	rows.append({"id": "pool", "label": "Karten wählen …",
 		"value": "%d von %d Karten" % [config.effective_pool(playable).size(), playable.size()], "adjustable": false})
+	rows.append({"id": "order", "label": "Reihenfolge", "value": config.order_label(), "adjustable": true})
 	rows.append({"id": "points", "label": "Punkte zum Sieg", "value": str(config.points_to_win), "adjustable": true, "gap": true})
 	rows.append({"id": "time", "label": "Sudden Death nach", "value": "%d s" % config.round_time_s, "adjustable": true})
 	rows.append({"id": "music", "label": "Musik", "value": config.music_label(), "adjustable": true, "gap": true})
@@ -133,7 +174,7 @@ func _row_count() -> int:
 		Mode.PLAYERS:
 			return GameConfig.SLOT_COUNT * 2
 		Mode.MAPS:
-			return MAP_ROWS_BEFORE_LIST + catalog.names.size()
+			return catalog.names.size()
 	return _main_rows().size()
 
 
@@ -145,11 +186,6 @@ func _start_blocker() -> String:
 		return "keine Karte für diese Spielerplätze"
 	return ""
 
-
-# Gibt es die aktuelle Karte für die Spielerplätze nicht (mehr), wechselt die Auswahl auf Zufall.
-func _normalize_map() -> void:
-	if not config.is_random_map() and not catalog.is_playable(config.map_name, config.active_slots()):
-		config.map_name = ""
 
 
 # --- Eingabe ---
@@ -168,6 +204,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			_render()
 		return
+	if _mode == Mode.MAPS and _handle_map_shortcut(event):
+		get_viewport().set_input_as_handled()
+		_render()
+		return
 	if event.is_action_pressed("ui_up"):
 		_row = posmod(_row - 1, _row_count())
 	elif event.is_action_pressed("ui_down"):
@@ -182,6 +222,28 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	_render()
+
+
+# Kartenauswahl wie im Original: A = alle Karten, S = nur die aktuelle Karte (Gamepad: X / Y).
+func _handle_map_shortcut(event: InputEvent) -> bool:
+	var all := false
+	var only := false
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		var key := event as InputEventKey
+		var code := key.physical_keycode if key.keycode == 0 else key.keycode
+		all = code == KEY_A
+		only = code == KEY_S
+	elif event is InputEventJoypadButton and event.is_pressed():
+		var button := event as InputEventJoypadButton
+		all = button.button_index == JOY_BUTTON_X
+		only = button.button_index == JOY_BUTTON_Y
+	if all:
+		config.select_all(catalog.playable(config.active_slots()))
+	elif only:
+		var map := catalog.names[_row]
+		if catalog.is_playable(map, config.active_slots()):
+			config.select_only(map)
+	return all or only
 
 
 func _handle_edit_input(event: InputEvent) -> bool:
@@ -215,9 +277,8 @@ func _change(step: int) -> void:
 	var id := _row_id()
 	if id.begins_with("slot"):
 		config.cycle_slot(id.trim_prefix("slot").to_int(), step)
-		_normalize_map()
-	elif id == "map":
-		config.cycle_map(catalog.playable(config.active_slots()), step)
+	elif id == "order":
+		config.random_order = not config.random_order
 	elif id == "points":
 		config.cycle_points(step)
 	elif id == "time":
@@ -272,23 +333,17 @@ func _enter_submenu(mode: Mode) -> void:
 	_row = 0
 
 
+# Leertaste / Enter / Gamepad A schaltet die Karte unter dem Cursor an oder aus.
 func _accept_map_row() -> void:
-	var playable := catalog.playable(config.active_slots())
-	if _row == MAP_ROW_ALL:
-		for map in playable:
-			if not config.is_in_pool(map):
-				config.map_pool.append(map)
-	elif _row == MAP_ROW_NONE:
-		config.map_pool.clear()
-	else:
-		var map := catalog.names[_row - MAP_ROWS_BEFORE_LIST]
-		if playable.has(map):
-			config.toggle_pool(map)
+	var map := catalog.names[_row]
+	if catalog.is_playable(map, config.active_slots()):
+		config.toggle_pool(map)
 
 
 # --- Darstellung ---
 
 func _render() -> void:
+	_preview.visible = _mode == Mode.MAPS
 	match _mode:
 		Mode.HELP:
 			_render_help()
@@ -338,32 +393,39 @@ func _render_players() -> void:
 
 
 func _render_maps() -> void:
-	var playable := catalog.playable(config.active_slots())
-	var lines: Array[String] = ["[center][b]Kartenauswahl (Turnier)[/b][/center]", ""]
-	lines.append(_row_line(MAP_ROW_ALL, "Alle spielbaren auswählen", "", false))
-	lines.append(_row_line(MAP_ROW_NONE, "Auswahl leeren", "", false))
-	lines.append("")
-	var list_row := _row - MAP_ROWS_BEFORE_LIST
-	if list_row >= 0:
-		if list_row < _map_scroll:
-			_map_scroll = list_row
-		elif list_row >= _map_scroll + VISIBLE_MAP_ROWS:
-			_map_scroll = list_row - VISIBLE_MAP_ROWS + 1
+	var active := config.active_slots()
+	var playable := catalog.playable(active)
+	var lines: Array[String] = ["[center][b]Kartenauswahl[/b][/center]", ""]
+	if _row < _map_scroll:
+		_map_scroll = _row
+	elif _row >= _map_scroll + VISIBLE_MAP_ROWS:
+		_map_scroll = _row - VISIBLE_MAP_ROWS + 1
 	var last := mini(_map_scroll + VISIBLE_MAP_ROWS, catalog.names.size())
 	lines.append("[color=#888888]%s[/color]" % ("↑ weitere Karten" if _map_scroll > 0 else " "))
 	for i in range(_map_scroll, last):
 		var map := catalog.names[i]
-		var ok := playable.has(map)
 		var box := "[lb]x]" if config.is_in_pool(map) else "[lb] ]"
-		var label := "%s %s · %d Plätze" % [box, map.get_basename(), catalog.start_count(map)]
-		if not ok:
-			label = "[color=#666666]%s (zu wenige Startplätze)[/color]" % label
-		lines.append(_row_line(MAP_ROWS_BEFORE_LIST + i, label, "", false))
+		var label := "%s %s" % [box, map.get_basename()]
+		if not playable.has(map):
+			label = "[color=#666666]%s[/color]" % label
+		elif config.is_in_pool(map):
+			label = "[color=#ffdd44]%s[/color]" % label
+		lines.append(_row_line(i, label, "", false))
 	lines.append("[color=#888888]%s[/color]" % ("↓ weitere Karten" if last < catalog.names.size() else " "))
 	lines.append("")
-	var selected := config.effective_pool(playable).size()
-	lines.append("[center][color=#aaaaaa]%d Karten im Turnier · Enter: an/aus · Esc / B: zurück[/color][/center]" % selected)
+	var current := catalog.names[_row]
+	var capacity := catalog.start_count(current)
+	var limit_color := "#aaaaaa" if playable.has(current) else "#ff8a80"
+	lines.append("[color=%s]Diese Karte ist nur für bis zu %d Spieler[/color]" % [limit_color, capacity])
+	lines.append("[color=#aaaaaa]%d von %d Karten ausgewählt[/color]" % [config.effective_pool(playable).size(), playable.size()])
+	lines.append("")
+	lines.append("[color=#aaaaaa]Leertaste / Enter / A: Karte an/aus[/color]")
+	lines.append("[color=#aaaaaa]A: alle Karten · S: nur diese Karte (Gamepad X / Y)[/color]")
+	lines.append("[color=#aaaaaa]Esc / B: zurück[/color]")
 	_text.text = "\n".join(lines)
+	_preview.data = catalog.data_of(current)
+	_preview.active_slots = active
+	_preview.queue_redraw()
 
 
 func _render_help() -> void:
@@ -378,13 +440,13 @@ func _render_help() -> void:
 		"  [b]Esc[/b]        Menü aufrufen / Weiterspielen (bzw. Beenden)",
 		"  [b]M[/b]          Musik stummschalten / aktivieren",
 		"  [b]F4[/b]         Ton-Effekte stummschalten / aktivieren",
-		"  [b]N[/b]          Nächste Karte laden (Next Map)",
-		"  [b]P[/b]          Vorherige Karte laden (Previous Map)",
+
 		"  [b]R[/b]          Aktuelle Runde neu starten",
 		"  [b]F5[/b]         Neues Match starten (Punkte zurücksetzen)",
 		"",
-		"[color=#ffaaee][b]Turnier & Teams:[/b][/color]",
-		"  Karte [b]Zufall[/b] spielt die Kartenauswahl in gemischter Reihenfolge, jede Karte einmal pro Durchgang.",
+		"[color=#ffaaee][b]Karten & Teams:[/b][/color]",
+		"  Unter [b]Karten wählen[/b] wählst du die Karten des Matches; nach jeder Runde folgt die nächste Karte,",
+		"  [b]Reihenfolge[/b] legt fest, ob zufällig (jede Karte einmal pro Durchgang) oder der Reihe nach gespielt wird.",
 		"  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.",
 		"",
 		"[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center]"

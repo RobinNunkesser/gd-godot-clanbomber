@@ -57,3 +57,22 @@ func test_removed_maps_are_dropped_from_the_running_pass() -> void:
 	var reduced: Array[String] = ["a", "b"]
 	for i in 6:
 		assert_bool(reduced.has(rotation.next(reduced, rng))).is_true()
+
+
+func test_sequential_order_wraps_around() -> void:
+	var rotation := MapRotation.new()
+	var pool: Array[String] = ["a", "b", "c"]
+	var drawn: Array[String] = []
+	for i in 7:
+		drawn.append(rotation.next_in_order(pool))
+	assert_array(drawn).is_equal(["a", "b", "c", "a", "b", "c", "a"])
+
+
+func test_sequential_order_restarts_when_current_map_leaves_pool() -> void:
+	var rotation := MapRotation.new()
+	var pool: Array[String] = ["a", "b", "c"]
+	rotation.next_in_order(pool)
+	rotation.next_in_order(pool)
+	var reduced: Array[String] = ["a", "c"]
+	assert_str(rotation.next_in_order(reduced)).is_equal("a")
+	assert_str(MapRotation.new().next_in_order([] as Array[String])).is_equal("")
