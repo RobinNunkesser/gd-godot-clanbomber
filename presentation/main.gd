@@ -224,7 +224,7 @@ func _try_load_map(map_name: String) -> bool:
 	_hurry_started = false
 	_hurry_beep_at = 0
 	banner.modulate = Color.WHITE
-	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [R] Reset" % [map_name.get_basename(), data.author]
+	banner.text = "%s%s       [Esc] %s  |  [M] %s  |  [F4] %s  |  [R] %s" % [map_name.get_basename(), tr("BANNER_MAP_BY") % data.author, tr("MENU_HELP").to_lower(), tr("MENU_MUSIC").to_lower(), tr("MENU_SFX").to_lower(), "Reset"]
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	banner.anchor_left = 0.0
 	banner.anchor_right = 1.0
@@ -477,13 +477,13 @@ func _update_hurry() -> void:
 		return
 	if not _hurry_started:
 		_hurry_started = true
-	banner.text = "HURRY UP!"
-	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	banner.anchor_left = 0.0
-	banner.anchor_right = 1.0
-	banner.offset_left = 0.0
-	banner.offset_right = 0.0
-	_hurry_beep_at = 0
+		banner.text = tr("HURRY_UP")
+		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		banner.anchor_left = 0.0
+		banner.anchor_right = 1.0
+		banner.offset_left = 0.0
+		banner.offset_right = 0.0
+		_hurry_beep_at = 0
 	if Time.get_ticks_msec() >= _hurry_beep_at:
 		_hurry_beep_at = Time.get_ticks_msec() + HURRY_BEEP_INTERVAL_MS
 		sfx.play("ui_select", -6.0)
@@ -495,7 +495,7 @@ func _update_countdown() -> void:
 	if _world == null or _round_over or _hurry_started:
 		return
 	if _world.is_sudden_death():
-		banner.text = "SUDDEN DEATH"
+		banner.text = tr("SUDDEN_DEATH")
 		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		banner.anchor_left = 1.0
 		banner.anchor_right = 1.0

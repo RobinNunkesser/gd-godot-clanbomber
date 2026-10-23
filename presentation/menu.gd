@@ -14,6 +14,9 @@ enum Mode { MAIN, HELP, PLAYERS, MAPS, MATCH, SETTINGS }
 
 const VISIBLE_MAP_ROWS := 12
 const VISIBLE_PLAYER_ROWS := 12
+const LANGS := ["de", "en"]
+
+var _lang_index := 0
 
 
 # Kleine Kartenvorschau neben der Kartenliste (wie im Original): Kacheln und Startplätze.
@@ -95,6 +98,10 @@ func _ready() -> void:
 	box.add_child(_preview)
 	add_child(box)
 	visible = false
+	var lang := OS.get_locale_language()
+	if lang == "en":
+		_lang_index = 1
+	TranslationServer.set_locale(LANGS[_lang_index])
 
 
 func open() -> void:
@@ -130,55 +137,50 @@ func back() -> bool:
 func _main_rows() -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	if is_game_active:
-		rows.append({"id": "resume", "label": "[b]Weiterspielen (Resume)[/b]", "value": "", "adjustable": false, "gap": true})
-		rows.append({"id": "start", "label": "[b]Neues Match starten[/b]", "value": "", "adjustable": false})
+		rows.append({"id": "resume", "label": "[b]%s[/b]" % tr("MENU_RESUME"), "value": "", "adjustable": false, "gap": true})
+		rows.append({"id": "start", "label": "[b]%s[/b]" % tr("MENU_NEW_MATCH"), "value": "", "adjustable": false})
 	else:
-		var label := "[b]Start[/b]"
+		var label := "[b]%s[/b]" % tr("MENU_START")
 		var blocker := _start_blocker()
 		if not blocker.is_empty():
 			label += " [color=#ff8a80](%s)[/color]" % blocker
 		rows.append({"id": "start", "label": label, "value": "", "adjustable": false, "gap": true})
-	rows.append({"id": "players", "label": "Spieler & Teams", "value": _players_summary(), "adjustable": false})
+	rows.append({"id": "players", "label": tr("MENU_PLAYERS_TEAMS"), "value": _players_summary(), "adjustable": false})
 	var playable := catalog.playable(config.active_slots())
-	rows.append({"id": "pool", "label": "Karten", "value": "%d von %d • %s" % [config.effective_pool(playable).size(), playable.size(), config.order_label().to_lower()], "adjustable": false})
-	rows.append({"id": "match", "label": "Match", "value": _match_summary(), "adjustable": false})
-	rows.append({"id": "settings", "label": "Einstellungen", "value": _settings_summary(), "adjustable": false})
-	rows.append({"id": "help", "label": "Steuerung & Hilfe", "value": "", "adjustable": false})
-	rows.append({"id": "quit", "label": "Spiel beenden", "value": "", "adjustable": false})
+	var order := tr("MENU_RANDOM") if config.random_order else tr("MENU_SEQUENTIAL")
+	rows.append({"id": "pool", "label": tr("MENU_CARDS"), "value": "%d / %d • %s" % [config.effective_pool(playable).size(), playable.size(), order.to_lower()], "adjustable": false})
+	rows.append({"id": "match", "label": tr("MENU_MATCH"), "value": _match_summary(), "adjustable": false})
+	rows.append({"id": "settings", "label": tr("MENU_SETTINGS"), "value": _settings_summary(), "adjustable": false})
+	rows.append({"id": "help", "label": tr("MENU_HELP"), "value": "", "adjustable": false})
+	rows.append({"id": "quit", "label": tr("MENU_QUIT"), "value": "", "adjustable": false})
 	return rows
 
 
 func _players_summary() -> String:
 	var active := config.active_slots()
 	if active.is_empty():
-		return "keiner"
-	var humans := 0
-	var ais := 0
+		return tr("MENU_NONE")
 	var teams_used: Dictionary = {}
 	for slot in active:
-		if config.slots[slot] == GameConfig.Controller.AI:
-			ais += 1
-		else:
-			humans += 1
 		var team := config.effective_team(slot)
 		if team > 0:
 			teams_used[team] = true
 	if teams_used.size() > 0:
-		return "%d aktiv • %d Teams" % [active.size(), teams_used.size()]
-	return "%d aktiv (%dM/%dAI)" % [active.size(), humans, ais]
+		return "%d • %d %s" % [active.size(), teams_used.size(), tr("MENU_TEAM").strip_edges()]
+	return "%d" % active.size()
 
 
 func _match_summary() -> String:
-	return "%d Punkte • %d s • Startpos: %s" % [config.points_to_win, config.round_time_s, config.random_positions_label().to_lower()]
+	return "%d • %ds • %s" % [config.points_to_win, config.round_time_s, config.random_positions_label().to_lower()]
 
 
 func _settings_summary() -> String:
 	var path := config.external_map_dir
 	if path.is_empty():
-		path = "Standard"
+		path = tr("MENU_STANDARD")
 	else:
 		path = path.get_file() if path.get_file() != "" else path.get_basename()
-	return "Musik: %s • SFX: %s • Karten: %s" % [config.music_label(), config.sfx_label(), path]
+	return "%s/%s • %s" % [config.music_label(), config.sfx_label(), path]
 
 
 func _row_index(id: String) -> int:
@@ -197,7 +199,7 @@ func _row_id() -> String:
 func _external_dir_label() -> String:
 	if _editing and _edit_kind == "mapdir":
 		return "[color=#ffdd44]%s█[/color]" % _edit_text
-	return config.external_map_dir if not config.external_map_dir.is_empty() else "Standard"
+	return config.external_map_dir if not config.external_map_dir.is_empty() else tr("MENU_STANDARD")
 
 
 func refresh() -> void:
@@ -213,16 +215,16 @@ func _row_count() -> int:
 		Mode.MATCH:
 			return 4
 		Mode.SETTINGS:
-			return 3
+			return 4
 	return _main_rows().size()
 
 
 # Warum man (noch) nicht starten kann; leer = alles in Ordnung.
 func _start_blocker() -> String:
 	if not config.is_startable():
-		return "mindestens 2 Gegner nötig"
+		return tr("MENU_BLOCKER_MIN_OPPONENTS")
 	if catalog.playable(config.active_slots()).is_empty():
-		return "keine Karte für diese Spielerplätze"
+		return tr("MENU_BLOCKER_NO_MAP")
 	return ""
 
 
@@ -335,6 +337,9 @@ func _change(step: int) -> void:
 			1:
 				config.cycle_sfx(step)
 				audio_changed.emit()
+			2:
+				_lang_index = posmod(_lang_index + step, LANGS.size())
+				TranslationServer.set_locale(LANGS[_lang_index])
 		return
 	if _mode != Mode.MAIN:
 		return
@@ -367,8 +372,10 @@ func _accept() -> void:
 		Mode.MAPS:
 			_accept_map_row()
 		Mode.SETTINGS:
-			if _row == 2:
+			if _row == 3:
 				_begin_edit("mapdir", config.external_map_dir)
+			elif _row == 2:
+				_change(1)
 		_:
 			_accept_main_row()
 
@@ -450,14 +457,13 @@ func _render_main() -> void:
 			lines.append("")
 		lines.append(_row_line(i, row.label, row.value, row.adjustable))
 	lines.append("")
-	var hint := "Pfad eingeben, Enter bestätigt, Esc bricht ab" if _editing and _edit_kind == "mapdir" else \
-		"↑↓ wählen, ←→ ändern, Enter / Leertaste / Gamepad A bestätigen"
+	var hint := tr("MENU_PATH_HINT") if _editing and _edit_kind == "mapdir" else tr("MENU_NAV_HINT")
 	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
 	_text.text = "\n".join(lines)
 
 
 func _render_players() -> void:
-	var lines: Array[String] = ["[center][b]Spieler & Teams[/b][/center]", ""]
+	var lines: Array[String] = ["[center][b]%s[/b][/center]" % tr("MENU_PLAYERS_TITLE"), ""]
 	var visible_slots := floori(VISIBLE_PLAYER_ROWS / 2.0)
 	var current_slot := floori(_row / 2.0)
 	if current_slot < _player_first_slot:
@@ -467,50 +473,51 @@ func _render_players() -> void:
 	var first_slot := _player_first_slot
 	var last_slot := mini(first_slot + visible_slots, GameConfig.SLOT_COUNT)
 	if first_slot > 0:
-		lines.append("[color=#888888]↑ weitere Spieler[/color]")
+		lines.append("[color=#888888]%s[/color]" % tr("MENU_UP_MORE_PLAYERS"))
 	for slot in range(first_slot, last_slot):
 		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
-		lines.append("[color=#%s][b]Platz %d[/b][/color]  [color=#888888](%s)[/color]" % [
-			color.to_html(false), slot + 1, GameConfig.NAMES[config.slots[slot]]])
+		lines.append("[color=#%s][b]%s %d[/b][/color]  [color=#888888](%s)[/color]" % [
+			color.to_html(false), tr("MENU_NONE").is_empty() and "Platz" or "Platz", slot + 1, GameConfig.NAMES[config.slots[slot]]])
 		var name_text := config.name_of(slot)
 		if _editing and _edit_kind == "name" and _edit_slot == slot:
 			name_text = "[color=#ffdd44]%s█[/color]" % _edit_text
-		lines.append(_row_line(slot * 2, "Name", name_text, false))
+		lines.append(_row_line(slot * 2, tr("MENU_NAME"), name_text, false))
 		var team := config.teams[slot]
 		var team_text := GameConfig.team_label(team)
 		if team > 0:
 			team_text = "[color=#%s]%s[/color]" % [GameConfig.TEAM_COLORS[team - 1].to_html(false), team_text]
 			if config.slots[slot] != GameConfig.Controller.OFF and config.effective_team(slot) == 0:
-				team_text += " [color=#888888](allein, zählt als Einzelspieler)[/color]"
-		lines.append(_row_line(slot * 2 + 1, "Team", team_text, true))
+				team_text += " [color=#888888]%s[/color]" % tr("MENU_ALONE_COUNTS_AS_SINGLE")
+		lines.append(_row_line(slot * 2 + 1, tr("MENU_TEAM"), team_text, true))
 	if last_slot < GameConfig.SLOT_COUNT:
-		lines.append("[color=#888888]↓ weitere Spieler[/color]")
+		lines.append("[color=#888888]%s[/color]" % tr("MENU_DOWN_MORE_PLAYERS"))
 	lines.append("")
-	var hint := "Name tippen, Enter bestätigt, Esc bricht ab" if _editing else \
-		"Enter: Name ändern, ←→: Team wechseln, Esc / B: zurück"
+	var hint := tr("MENU_NAME_HINT") if _editing else tr("MENU_NAME_TEAM_HINT")
 	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
 	_text.text = "\n".join(lines)
 
 
 func _render_match() -> void:
-	var lines: Array[String] = ["[center][b]Match[/b][/center]", ""]
-	lines.append(_row_line(0, "Punkte zum Sieg", str(config.points_to_win), true))
-	lines.append(_row_line(1, "Sudden Death nach", "%d s" % config.round_time_s, true))
-	lines.append(_row_line(2, "Startpositionen", config.random_positions_label(), true))
-	lines.append(_row_line(3, "Reihenfolge", config.order_label(), true))
+	var lines: Array[String] = ["[center][b]%s[/b][/center]" % tr("MENU_MATCH_TITLE"), ""]
+	lines.append(_row_line(0, tr("MENU_POINTS_TO_WIN"), str(config.points_to_win), true))
+	lines.append(_row_line(1, tr("MENU_SUDDEN_DEATH_AFTER"), "%d s" % config.round_time_s, true))
+	var pos_label := tr("MENU_RANDOM") if config.random_positions else tr("MENU_FIXED")
+	lines.append(_row_line(2, tr("MENU_START_POSITIONS"), pos_label, true))
+	var ord_label := tr("MENU_RANDOM") if config.random_order else tr("MENU_SEQUENTIAL")
+	lines.append(_row_line(3, tr("MENU_ORDER"), ord_label, true))
 	lines.append("")
-	lines.append("[center][color=#aaaaaa]↑↓ wählen, ←→ ändern, Esc / B: zurück[/color][/center]")
+	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % tr("MENU_BACK").replace("Esc / B:", "↑↓ wählen, ←→ ändern, Esc / B:"))
 	_text.text = "\n".join(lines)
 
 
 func _render_settings() -> void:
-	var lines: Array[String] = ["[center][b]Einstellungen[/b][/center]", ""]
-	lines.append(_row_line(0, "Musik", config.music_label(), true))
-	lines.append(_row_line(1, "Ton-Effekte", config.sfx_label(), true))
-	lines.append(_row_line(2, "Externe Karten", _external_dir_label(), false))
+	var lines: Array[String] = ["[center][b]%s[/b][/center]" % tr("MENU_SETTINGS_TITLE"), ""]
+	lines.append(_row_line(0, tr("MENU_MUSIC"), config.music_label(), true))
+	lines.append(_row_line(1, tr("MENU_SFX"), config.sfx_label(), true))
+	lines.append(_row_line(2, tr("MENU_LANGUAGE"), LANGS[_lang_index], true))
+	lines.append(_row_line(3, tr("MENU_EXTERNAL_MAPS"), _external_dir_label(), false))
 	lines.append("")
-	var hint := "Pfad eingeben, Enter bestätigt, Esc bricht ab" if _editing and _edit_kind == "mapdir" else \
-		"↑↓ wählen, ←→ ändern, Enter: Pfad bearbeiten, Esc / B: zurück"
+	var hint := tr("MENU_PATH_HINT") if _editing and _edit_kind == "mapdir" else tr("MENU_SETTINGS_HINT")
 	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
 	_text.text = "\n".join(lines)
 
@@ -518,13 +525,13 @@ func _render_settings() -> void:
 func _render_maps() -> void:
 	var active := config.active_slots()
 	var playable := catalog.playable(active)
-	var lines: Array[String] = ["[center][b]Kartenauswahl[/b][/center]", ""]
+	var lines: Array[String] = ["[center][b]%s[/b][/center]" % tr("MENU_CARDS_TITLE"), ""]
 	if _row < _map_scroll:
 		_map_scroll = _row
 	elif _row >= _map_scroll + VISIBLE_MAP_ROWS:
 		_map_scroll = _row - VISIBLE_MAP_ROWS + 1
 	var last := mini(_map_scroll + VISIBLE_MAP_ROWS, catalog.names.size())
-	lines.append("[color=#888888]%s[/color]" % ("↑ weitere Karten" if _map_scroll > 0 else " "))
+	lines.append("[color=#888888]%s[/color]" % (tr("MENU_MORE_CARDS") if _map_scroll > 0 else " "))
 	for i in range(_map_scroll, last):
 		var map := catalog.names[i]
 		var box := "[lb]x]" if config.is_in_pool(map) else "[lb] ]"
@@ -534,17 +541,17 @@ func _render_maps() -> void:
 		elif config.is_in_pool(map):
 			label = "[color=#ffdd44]%s[/color]" % label
 		lines.append(_row_line(i, label, "", false))
-	lines.append("[color=#888888]%s[/color]" % ("↓ weitere Karten" if last < catalog.names.size() else " "))
+	lines.append("[color=#888888]%s[/color]" % (tr("MENU_LESS_CARDS") if last < catalog.names.size() else " "))
 	lines.append("")
 	var current := catalog.names[_row]
 	var capacity := catalog.start_count(current)
 	var limit_color := "#aaaaaa" if playable.has(current) else "#ff8a80"
-	lines.append("[color=%s]Diese Karte ist nur für bis zu %d Spieler[/color]" % [limit_color, capacity])
-	lines.append("[color=#aaaaaa]%d von %d Karten ausgewählt[/color]" % [config.effective_pool(playable).size(), playable.size()])
+	lines.append("[color=%s]%s[/color]" % [limit_color, tr("MENU_MAPS_ONLY_FOR_UP_TO") % capacity])
+	lines.append("[color=#aaaaaa]%s[/color]" % (tr("MENU_MAPS_SELECTED") % [config.effective_pool(playable).size(), playable.size()]))
 	lines.append("")
-	lines.append("[color=#aaaaaa]Leertaste / Enter / A: Karte an/aus[/color]")
-	lines.append("[color=#aaaaaa]A: alle Karten · S: nur diese Karte (Gamepad X / Y)[/color]")
-	lines.append("[color=#aaaaaa]Esc / B: zurück[/color]")
+	lines.append("[color=#aaaaaa]%s[/color]" % tr("MENU_MAP_SHORTCUTS"))
+	lines.append("[color=#aaaaaa]%s[/color]" % tr("MENU_MAP_SHORTCUTS2"))
+	lines.append("[color=#aaaaaa]%s[/color]" % tr("MENU_BACK"))
 	_text.text = "\n".join(lines)
 	_preview.data = catalog.data_of(current)
 	_preview.active_slots = active
@@ -553,29 +560,29 @@ func _render_maps() -> void:
 
 func _render_help() -> void:
 	var lines: Array[String] = [
-		"[center][b]Steuerung & Hilfe[/b][/center]",
+		"[center][b]%s[/b][/center]" % tr("MENU_HELP_TITLE"),
 		"",
-		"[color=#ffdd44][b]Spieler 1 (Tastatur):[/b][/color]   [b]W, A, S, D[/b] = Laufen  |  [b]Leertaste[/b] = Bombe legen",
-		"[color=#44ddff][b]Spieler 2 (Tastatur):[/b][/color]   [b]Pfeiltasten[/b] = Laufen  |  [b]Enter[/b] = Bombe legen",
-		"[color=#66ff66][b]Gamepad (1–8):[/b][/color]         [b]D-Pad / Stick[/b] = Laufen  |  [b]A-Taste[/b] = Bombe legen",
+		tr("MENU_HELP_P1"),
+		tr("MENU_HELP_P2"),
+		tr("MENU_HELP_PAD"),
 		"",
-		"[color=#ffaaee][b]Kurzbefehle im Spiel:[/b][/color]",
-		"  [b]Esc[/b]        Menü aufrufen / Weiterspielen (bzw. Beenden)",
-		"  [b]M[/b]          Musik stummschalten / aktivieren",
-		"  [b]F4[/b]         Ton-Effekte stummschalten / aktivieren",
-
-		"  [b]R[/b]          Aktuelle Runde neu starten",
-		"  [b]F5[/b]         Neues Match starten (Punkte zurücksetzen)",
+		tr("MENU_HELP_SHORTCUTS"),
+		tr("MENU_HELP_ESC"),
+		tr("MENU_HELP_M"),
+		tr("MENU_HELP_F4"),
 		"",
-		"[color=#ffaaee][b]Karten & Teams:[/b][/color]",
-			"  Unter [b]Karten[/b] wählst du die Karten des Matches; nach jeder Runde folgt die nächste Karte,",
-		"  [b]Reihenfolge[/b] legt fest, ob zufällig (jede Karte einmal pro Durchgang) oder der Reihe nach gespielt wird.",
-		"  [b]Startpositionen[/b] verteilt die Startfelder zufällig auf die aktiven Spieler (wie im Original).",
-		"  Unter [b]Einstellungen[/b] kannst du einen externen Kartenordner eintragen; er wird beim Start mitgeladen.",
-		"  Alternativ beim Start CLANBOMBER_MAPS_DIR setzen; user://maps wird immer mitgelesen.",
-		"  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.",
+		tr("MENU_HELP_R"),
+		tr("MENU_HELP_F5"),
 		"",
-		"[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center]"
+		tr("MENU_HELP_CARDS_TEAMS"),
+		tr("MENU_HELP_CARDS_TEXT"),
+		tr("MENU_HELP_ORDER_TEXT"),
+		tr("MENU_HELP_POS_TEXT"),
+		tr("MENU_HELP_EXTERNAL_TEXT"),
+		tr("MENU_HELP_CLANBOMBER_DIR_TEXT"),
+		tr("MENU_HELP_TEAMS_TEXT"),
+		"",
+		tr("MENU_HELP_PRESS_ANY")
 	]
 	_text.text = "\n".join(lines)
 
@@ -592,5 +599,8 @@ func _value_text(controller: int, pads: Array[int]) -> String:
 	var text: String = GameConfig.NAMES[controller]
 	if controller >= GameConfig.Controller.PAD_1 and controller <= GameConfig.Controller.PAD_8:
 		if not pads.has(controller - GameConfig.Controller.PAD_1):
-			text += " (nicht verbunden)"
+			if TranslationServer.get_locale().begins_with("de"):
+				text += " (nicht verbunden)"
+			else:
+				text += " (not connected)"
 	return text

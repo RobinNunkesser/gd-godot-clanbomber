@@ -7,6 +7,12 @@ run/main_scene="res://scenes/main.tscn"
 config/icon="res://assets/icon.png"
 config/features=PackedStringArray("4.7")
 
+[locale]
+
+translations=PackedStringArray("res://i18n/translations.csv")
+locale/test="de"
+locale/fallback="en"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")

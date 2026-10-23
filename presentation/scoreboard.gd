@@ -5,7 +5,7 @@ extends PanelContainer
 
 enum Action { NEW_MATCH, MENU }
 
-const ACTION_LABELS: Array[String] = ["Neues Match", "Zurück zum Menü"]
+const ACTION_LABELS: Array[String] = ["SCOREBOARD_NEW_MATCH", "SCOREBOARD_BACK_TO_MENU"]
 const GOLD := Color("ffd54f")
 
 var selected := Action.NEW_MATCH
@@ -78,11 +78,17 @@ func _render(match_state: SimMatch, names: Dictionary) -> void:
 		for action in ACTION_LABELS.size():
 			var marker := "▶ " if action == selected else "   "
 			var color := GOLD.to_html(false) if action == selected else "cccccc"
-			lines.append("[center][color=#%s]%s%s[/color][/center]" % [color, marker, ACTION_LABELS[action]])
+			lines.append("[center][color=#%s]%s%s[/color][/center]" % [color, marker, tr(ACTION_LABELS[action])])
 		lines.append("")
-		lines.append("[center][color=#aaaaaa]↑↓ wählen, Leertaste / Enter / Gamepad A bestätigen[/color][/center]")
+		if TranslationServer.get_locale().begins_with("de"):
+			lines.append("[center][color=#aaaaaa]↑↓ wählen, Leertaste / Enter / Gamepad A bestätigen[/color][/center]")
+		else:
+			lines.append("[center][color=#aaaaaa]↑↓ select, Space / Enter / Gamepad A confirm[/color][/center]")
 	else:
-		lines.append("[center]Leertaste / Enter: nächste Runde[/center]")
+		if TranslationServer.get_locale().begins_with("de"):
+			lines.append("[center]Leertaste / Enter: nächste Runde[/center]")
+		else:
+			lines.append("[center]Space / Enter: next round[/center]")
 	_text.text = "\n".join(lines)
 
 
