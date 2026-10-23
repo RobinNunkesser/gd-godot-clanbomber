@@ -1,7 +1,7 @@
 class_name Scoreboard
 extends PanelContainer
 ## Overlay mit Punkteständen am Rundenende. Hat ein Spieler oder Team die Zielpunktzahl erreicht,
-## wird daraus der Sieger-Bildschirm mit den Aktionen "Neues Match" und "Zurück zum Menü".
+## wird daraus der Sieger-Bildschirm mit den Aktionen I18n.text("SCOREBOARD_NEW_MATCH") und I18n.text("SCOREBOARD_BACK_TO_MENU").
 
 enum Action { NEW_MATCH, MENU }
 
@@ -78,41 +78,41 @@ func _render(match_state: SimMatch, names: Dictionary) -> void:
 		for action in ACTION_LABELS.size():
 			var marker := "▶ " if action == selected else "   "
 			var color := GOLD.to_html(false) if action == selected else "cccccc"
-			lines.append("[center][color=#%s]%s%s[/color][/center]" % [color, marker, tr(ACTION_LABELS[action])])
+			lines.append("[center][color=#%s]%s%s[/color][/center]" % [color, marker, I18n.text(ACTION_LABELS[action])])
 		lines.append("")
-		if TranslationServer.get_locale().begins_with("de"):
-			lines.append("[center][color=#aaaaaa]↑↓ wählen, Leertaste / Enter / Gamepad A bestätigen[/color][/center]")
-		else:
-			lines.append("[center][color=#aaaaaa]↑↓ select, Space / Enter / Gamepad A confirm[/color][/center]")
+		lines.append("[center][color=#aaaaaa]%s[/color][/center]" % I18n.text("SCOREBOARD_CONFIRM"))
 	else:
-		if TranslationServer.get_locale().begins_with("de"):
-			lines.append("[center]Leertaste / Enter: nächste Runde[/center]")
-		else:
-			lines.append("[center]Space / Enter: next round[/center]")
+		lines.append("[center]%s[/center]" % I18n.text("SCOREBOARD_NEXT_ROUND"))
 	_text.text = "\n".join(lines)
 
 
 func _headline(match_state: SimMatch, names: Dictionary) -> String:
 	if _match_over:
 		var who := _winner_name(match_state, names)
-		return "[font_size=36][color=#%s][b]★ %s gewinnt das Match! ★[/b][/color][/font_size]" % [GOLD.to_html(false), who]
+		return "[font_size=36][color=#%s][b]%s[/b][/color][/font_size]" % [GOLD.to_html(false), I18n.text("SCOREBOARD_WINS_MATCH") % who]
 	var winners := match_state.last_winners
 	if winners.is_empty():
-		return "[b]Unentschieden[/b]"
+		return "[b]%s[/b]" % I18n.text("SCOREBOARD_DRAW")
 	var team := match_state.team_of(winners[0])
 	if team > 0:
-		return "[b]%s gewinnt die Runde[/b]" % GameConfig.team_label(team)
-	return "[b]%s gewinnt die Runde[/b]" % _name(winners[0], names)
+		return "[b]%s[/b]" % (I18n.text("SCOREBOARD_WINS_ROUND") % _team_text(team))
+	return "[b]%s[/b]" % (I18n.text("SCOREBOARD_WINS_ROUND") % _name(winners[0], names))
 
 
 func _winner_name(match_state: SimMatch, names: Dictionary) -> String:
 	if match_state.winning_team > 0:
-		return GameConfig.team_label(match_state.winning_team)
+		return _team_text(match_state.winning_team)
 	return _name(match_state.match_winner, names)
 
 
 func _name(id: int, names: Dictionary) -> String:
-	return names.get(id, "Spieler %d" % id)
+	return names.get(id, I18n.text("SCOREBOARD_PLAYER") % id)
+
+
+func _team_text(team: int) -> String:
+	if team <= 0:
+		return I18n.text("TEAM_NO_TEAM")
+	return I18n.text("TEAM_LABEL") + GameConfig.TEAM_NAMES[team - 1]
 
 
 func _player_line(id: int, match_state: SimMatch, names: Dictionary) -> String:
@@ -120,7 +120,7 @@ func _player_line(id: int, match_state: SimMatch, names: Dictionary) -> String:
 	var won := match_state.last_winners.has(id)
 	return "[color=#%s]%s[/color]   %s   Kills %d%s" % [
 		color.to_html(false), _name(id, names), _pips(match_state.points_of(id), match_state.points_to_win),
-		match_state.kills_of(id), "   ◀ Rundensieg" if won else ""]
+		match_state.kills_of(id), "   ◀ " + I18n.text("SCOREBOARD_ROUND_WIN") if won else ""]
 
 
 # Teams gruppiert (Punkte als Durchschnitt je Mitglied wie im Original), danach die Einzelspieler.
@@ -133,7 +133,7 @@ func _append_team_table(lines: Array[String], match_state: SimMatch, names: Dict
 		var color: Color = GameConfig.TEAM_COLORS[team - 1]
 		var average := match_state.team_points(team) / size
 		lines.append("[color=#%s][b]%s[/b][/color]   %s" % [
-			color.to_html(false), GameConfig.team_label(team), _pips(average, match_state.points_to_win)])
+			color.to_html(false), _team_text(team), _pips(average, match_state.points_to_win)])
 		for id in ranking:
 			if match_state.team_of(id) == team:
 				lines.append("   " + _player_line(id, match_state, names))
@@ -142,7 +142,7 @@ func _append_team_table(lines: Array[String], match_state: SimMatch, names: Dict
 		if match_state.team_of(id) == 0:
 			singles.append(_player_line(id, match_state, names))
 	if not singles.is_empty():
-		lines.append("[color=#aaaaaa][b]Einzelspieler[/b][/color]")
+		lines.append("[color=#aaaaaa][b]%s[/b][/color]" % I18n.text("SCOREBOARD_SINGLES"))
 		for line in singles:
 			lines.append("   " + line)
 

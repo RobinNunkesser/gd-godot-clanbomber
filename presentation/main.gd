@@ -224,7 +224,7 @@ func _try_load_map(map_name: String) -> bool:
 	_hurry_started = false
 	_hurry_beep_at = 0
 	banner.modulate = Color.WHITE
-	banner.text = "%s%s       [Esc] %s  |  [M] %s  |  [F4] %s  |  [R] %s" % [map_name.get_basename(), tr("BANNER_MAP_BY") % data.author, tr("MENU_HELP").to_lower(), tr("MENU_MUSIC").to_lower(), tr("MENU_SFX").to_lower(), "Reset"]
+	banner.text = "%s%s       %s" % [map_name.get_basename(), I18n.text("BANNER_MAP_BY") % data.author, I18n.text("BANNER_HINT")]
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	banner.anchor_left = 0.0
 	banner.anchor_right = 1.0
@@ -349,7 +349,7 @@ func _handle_scoreboard_input(event: InputEvent) -> void:
 			_continue_after_scoreboard()
 
 
-# Sieger-Bildschirm: ↑↓ wählen zwischen "Neues Match" und "Zurück zum Menü", Leertaste/Enter/A bestätigt.
+# Sieger-Bildschirm: ↑↓ wählen zwischen I18n.text("SCOREBOARD_NEW_MATCH") und I18n.text("SCOREBOARD_BACK_TO_MENU"), Leertaste/Enter/A bestätigt.
 func _handle_match_over_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_up"):
 		_scoreboard.move_selection(-1)
@@ -441,14 +441,14 @@ func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
 
 
 func _on_player_died(player_id: int, _killer_id: int) -> void:
-	banner.text = "%s ist tot" % _player_name(player_id)
+	banner.text = I18n.text("BANNER_PLAYER_DIED") % _player_name(player_id)
 	sfx.play("death")
 
 
 func _connect_sounds() -> void:
 	_world.player_died.connect(_on_player_died)
 	_world.player_falling.connect(func(id: int) -> void:
-		banner.text = "%s stürzt ab!" % _player_name(id)
+		banner.text = I18n.text("BANNER_PLAYER_FELL") % _player_name(id)
 		sfx.play("death", -2.0))
 	_world.bomb_placed.connect(func(_b: SimBomb) -> void: sfx.play("bomb_place", -4.0))
 	_world.bomb_exploded.connect(func(_b: SimBomb, _e: SimExplosion) -> void: sfx.play("explosion"))
@@ -460,7 +460,7 @@ func _connect_sounds() -> void:
 	_world.bomb_landed.connect(func(_b: SimBomb) -> void: sfx.play("land"))
 	_world.bomb_trapped.connect(func(_b: SimBomb) -> void: sfx.play("trap"))
 	_world.sudden_death_started.connect(func() -> void:
-		banner.text = "SUDDEN DEATH!"
+		banner.text = I18n.text("SUDDEN_DEATH") + "!"
 		sfx.play("disease"))
 	_world.tile_vanishing.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -3.0))
 
@@ -477,7 +477,7 @@ func _update_hurry() -> void:
 		return
 	if not _hurry_started:
 		_hurry_started = true
-		banner.text = tr("HURRY_UP")
+		banner.text = I18n.text("HURRY_UP")
 		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		banner.anchor_left = 0.0
 		banner.anchor_right = 1.0
@@ -495,7 +495,7 @@ func _update_countdown() -> void:
 	if _world == null or _round_over or _hurry_started:
 		return
 	if _world.is_sudden_death():
-		banner.text = tr("SUDDEN_DEATH")
+		banner.text = I18n.text("SUDDEN_DEATH")
 		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		banner.anchor_left = 1.0
 		banner.anchor_right = 1.0
