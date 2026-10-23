@@ -76,7 +76,6 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 ## Bekannte Lücken gegenüber dem GDD
 
 - Die 177-ms-Sperre beim Bombenlegen ist nicht implementiert (durch Tasten-Events praktisch entschärft).
-- Der optionale Kids-Mode (Cube Pets) ist noch nicht umgesetzt.
 - Die 33 Originalkarten sind nicht gebündelt; sie werden bei Bedarf aus einem externen Ordner geladen.
 - Freeze ist bewusst nicht implementiert (im Original Totcode); der Glove-Wurf stoppt an Wänden und Boxen.
 

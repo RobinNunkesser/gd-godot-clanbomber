@@ -68,7 +68,7 @@ Präsentation:
 - **8 Spieler statt 4:** Menü, Steuerungszuordnung und HUD auf acht Plätze erweitert; vorhandene Modelle werden wiederverwendet.
 - **Externe Karten zur Laufzeit:** Originalkarten bleiben im separaten GPL-Paket und werden über einen konfigurierbaren Pfad, `CLANBOMBER_MAPS_DIR` oder `user://maps` mitgeladen.
 - **Intro-Flug und Hurry-Up:** Beide GDD-Vorgaben sind umgesetzt; der Runden-Timer startet nach der Landung.
-- **Kids-Mode:** Bewusst zurückgestellt (Backlog), nicht Teil des aktuellen Meilensteins.
+- **i18n:** Deutsch/Englisch über CSV + TranslationServer, Sprachwahl im Menü.
 
 ## Bekannte Abweichungen und Vereinfachungen (vom Nutzer beim Spielen zu bewerten)
 
@@ -82,18 +82,17 @@ Präsentation:
 
 - Sudden Death: Bomben auf einem Loch verschwinden sofort (im Original fallen sie 1 s). Die Observer-Landung auf einer Mauer macht sie zu Boden, auf einer Box zerbricht sie.
 - Rundenverwaltung: Rundenende und Punkte wie im Original (+1 je Überlebendem, bei Gleichstand keiner). Das Menü erlaubt eine feste Karte (bleibt über alle Runden) oder Zufallskarte je Runde sowie 1-10 Punkte zum Sieg. Karten ohne genug Startfelder für die aktiven Plätze werden übersprungen; Startfelder sind optional zufällig verteilt.
-- Observer-Grafik und Sudden-Death-Sounds sind Platzhalter (vorhandene Effekte wiederverwendet).
+- Der Observer ist eine stilisierte Bombe mit Ausrufezeichen; die Sudden-Death-Sounds nutzen vorhandene Effekte.
 
 ## Verbleibende GDD-Abweichungen
 
 - **Bomben-Entprellung:** Die im Original/GDD genannte 177-ms-Sperre beim Legen ist nicht implementiert (durch Tasten-Events praktisch entschärft).
-- **Kids-Mode:** Der GDD nennt den Modus als optionale Erweiterung; er ist bewusst noch nicht umgesetzt.
 - **Originalkarten:** Das Spiel bringt nur die eigenen 37 Karten mit. Die 33 Originalkarten funktionieren zur Laufzeit über den externen Kartenordner, sind aber nicht gebündelt.
 
 ## Offene Punkte der Präsentation
 
 - Figuren sind in der 3D-Ansicht klein und schwer zu unterscheiden (Skalierung in `arena_view_3d.gd`, `model.scale`; Spielerring zeigt die Farbe). Ab Spieler 7 wiederholen sich Modelle, werden aber farbig überlagert.
-- Eis, Trap und Pfeile sind noch Platzhalter-Grafik (Extras und Flammen sind Modelle).
+- Eis, Trap und Pfeile nutzen eigene Texturen (`assets/textures/tiles/tile_ice.png`, `tile_trap.png`, `tile_arrow.png`) mit Emissive-Material; Extras und Flammen sind 3D-Modelle.
 - Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
 - Extras sind Mini-Dungeon-Modelle (`weapon-sword` Power, `pot` Bomb, `coin` Skateboard, `weapon-spear` Kick, `shield-round` Glove, `potion` für die drei Krankheiten, farblich getönt) plus schwebender Buchstabe; Zuordnung in `EXTRA_MODELS` in `arena_view_3d.gd`. Ungenutzt: `key`, `chest`, `column`, `rocks`.
 - Das Menü kennt 8 Plätze (Aus, Tastatur 1/2, Gamepad 1-8, AI); Standard ist Mensch gegen AI auf `Crossroads.map`.
@@ -110,7 +109,6 @@ Präsentation:
 5. ~~Karten-UI & Turnier~~ (erledigt, Slice 10: Filter nach Spielerzahl, Kartenauswahl-Pool mit Rotation).
 6. ~~Menü & Match-System~~ (erledigt, Slice 9 & 10: Spielerzahl, Spielernamen, Teams, Sudden Death Zeit, Beenden, Sieger-Screen).
 7. **Optik & Audio:** Juice-Stufe 1 erledigt (`effects_3d.gd`), CC0-BGM integriert, PBR-Boden/Eis/Pfeil/Fallen-Texturen aktiv.
-8. **Kids-Mode** (Cube Pets; zurückgestellt, optionaler Backlog).
 
 Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentation, dann README und diese Datei aktualisieren.
 
@@ -118,4 +116,3 @@ Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentati
 
 - Ob die Repos öffentlich werden (das GitHub-Repo ist derzeit privat).
 - Ob die Git-Historie des GPL-Kartenrepos bereinigt werden soll (die Eigenkarten sind dort in älterer Historie noch einsehbar).
-- Wann der optionale Kids-Mode (Cube Pets) eingeplant wird.
