@@ -9,7 +9,7 @@ config/features=PackedStringArray("4.7")
 
 [locale]
 
-translations=PackedStringArray("res://i18n/translations.csv")
+translations=PackedStringArray("res://i18n/translations.de.translation", "res://i18n/translations.en.translation")
 locale/test="de"
 locale/fallback="en"
 
