@@ -4,7 +4,7 @@ extends Node3D
 
 const CELL := SimConstants.CELL_SIZE
 const PLATFORMER_DIR := "res://assets/models/platformer/"
-const CHARACTER_MODELS := ["oozi", "oobi", "oopi", "oodi", "human", "orc", "oozi", "oobi"]
+const CHARACTER_MODELS := ["oozi", "oobi", "oopi", "oodi", "oopi", "oodi", "oozi", "oobi"]
 const WALL_SCENE := preload("res://assets/models/mini-dungeon/wall.glb")
 const TRAP_SCENE := preload("res://assets/models/mini-dungeon/trap.glb")
 const BOX_SCENE := preload("res://assets/models/mini-dungeon/barrel.glb")
@@ -245,10 +245,9 @@ func _make_player(id: int) -> Node3D:
 	var model: Node3D = load(_character_path(CHARACTER_MODELS[model_index])).instantiate()
 	model.name = "Model"
 	model.scale = Vector3.ONE * 0.85
-	if model_index >= 6:
-		# Spieler 7/8 nutzen Modelle von 1/2; eine farbige Überlagerung hält sie unterscheidbar.
+	if model_index >= 4:
 		var tint := PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()]
-		var overlay := _material(Color(tint.r, tint.g, tint.b, 0.45), true)
+		var overlay := _material(Color(tint.r, tint.g, tint.b, 0.5), true)
 		for mesh in model.find_children("*", "MeshInstance3D", true, false):
 			(mesh as MeshInstance3D).material_overlay = overlay
 	root.add_child(model)
