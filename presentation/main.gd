@@ -15,8 +15,8 @@ const HURRY_BEEP_INTERVAL_MS := 900
 
 @onready var view3d: ArenaView3D = $ArenaView3D
 @onready var sfx: Sfx = $Sfx
-@onready var hud: Label = $UI/Hud
-@onready var banner: Label = $UI/Banner
+@onready var hud: Label = get_node_or_null("UI/Hud")
+@onready var banner: Label = get_node_or_null("UI/Banner")
 
 var _catalog := MapCatalog.new()
 var _rotation := MapRotation.new()
@@ -179,14 +179,17 @@ func _load_map(advance: bool) -> void:
 	var config := _menu.config
 	var playable := _catalog.playable(config.active_slots())
 	if playable.is_empty():
-		banner.text = "Keine passende Karte gefunden"
+		banner.text = I18n.text("MENU_BLOCKER_NO_MAP") if TranslationServer.get_locale().begins_with("de") else "No suitable map found"
 		return
 	var map_name := _current_map
 	if advance or not playable.has(map_name):
 		var pool := config.effective_pool(playable)
 		map_name = _rotation.next(pool, _rng) if config.random_order else _rotation.next_in_order(pool)
 	if not _try_load_map(map_name):
-		banner.text = "Karte %s konnte nicht geladen werden" % map_name
+		if TranslationServer.get_locale().begins_with("de"):
+			banner.text = "Karte %s konnte nicht geladen werden" % map_name.get_basename()
+		else:
+			banner.text = "Map %s could not be loaded" % map_name.get_basename()
 
 
 func _try_load_map(map_name: String) -> bool:
@@ -224,12 +227,14 @@ func _try_load_map(map_name: String) -> bool:
 	_hurry_started = false
 	_hurry_beep_at = 0
 	banner.modulate = Color.WHITE
-	banner.text = "%s%s       %s" % [map_name.get_basename(), I18n.text("BANNER_MAP_BY") % data.author, I18n.text("BANNER_HINT")]
+	banner.text = "%s%s" % [map_name.get_basename(), I18n.text("BANNER_MAP_BY") % data.author]
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	banner.anchor_left = 0.0
 	banner.anchor_right = 1.0
 	banner.offset_left = 8.0
 	banner.offset_right = -8.0
+	banner.visible = true
+	_showing_map_banner = true
 	_update_countdown()
 	return true
 
@@ -242,6 +247,7 @@ func _physics_process(delta: float) -> void:
 			_update_countdown()
 			return
 		_intro = false
+		_showing_map_banner = false
 		sfx.play("land")
 	_apply_human_input()
 	_clock_ms += delta * 1000.0
@@ -491,10 +497,17 @@ func _update_hurry() -> void:
 	banner.modulate = Color(1.0, 0.85, 0.3, blink)
 
 
+var _showing_map_banner := false
+
 func _update_countdown() -> void:
 	if _world == null or _round_over or _hurry_started:
 		return
+	if _intro:
+		if _showing_map_banner and banner != null and banner.text != "" and not banner.text.begins_with("HURRY") and not banner.text.begins_with("SUDDEN") and "s" not in banner.text or (_showing_map_banner and banner.text.find("s") == -1 and banner.text != I18n.text("HURRY_UP")):
+			pass
 	if _world.is_sudden_death():
+		_showing_map_banner = false
+		if banner == null: return
 		banner.text = I18n.text("SUDDEN_DEATH")
 		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		banner.anchor_left = 1.0
@@ -503,6 +516,10 @@ func _update_countdown() -> void:
 		banner.offset_right = -8.0
 		banner.modulate = Color.WHITE
 		return
+	if _intro and _showing_map_banner:
+		return
+	_showing_map_banner = false
+	if banner == null: return
 	banner.text = "%d s" % ceili(_world.round_time_ms / 1000.0)
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	banner.anchor_left = 1.0
