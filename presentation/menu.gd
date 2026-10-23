@@ -10,7 +10,7 @@ signal audio_changed
 signal map_dir_changed(path: String)
 signal quit_requested
 
-enum Mode { MAIN, HELP, PLAYERS, MAPS }
+enum Mode { MAIN, HELP, PLAYERS, MAPS, MATCH, SETTINGS }
 
 const VISIBLE_MAP_ROWS := 12
 const VISIBLE_PLAYER_ROWS := 12
@@ -119,7 +119,7 @@ func back() -> bool:
 		return true
 	if _mode != Mode.MAIN:
 		_mode = Mode.MAIN
-		_row = _return_row
+		_row = _row_index("resume" if is_game_active else "start")
 		_render()
 		return true
 	return false
@@ -129,26 +129,6 @@ func back() -> bool:
 
 func _main_rows() -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	var pads := Input.get_connected_joypads()
-	for slot in GameConfig.SLOT_COUNT:
-		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
-		var value := _value_text(config.slots[slot], pads)
-		var team := config.effective_team(slot)
-		if team > 0:
-			value += "   [color=#%s]%s[/color]" % [GameConfig.TEAM_COLORS[team - 1].to_html(false), GameConfig.team_label(team)]
-		rows.append({"id": "slot%d" % slot, "label": "[color=#%s]%s[/color]" % [color.to_html(false), config.name_of(slot)],
-			"value": value, "adjustable": true})
-	rows.append({"id": "players", "label": "Namen & Teams …", "value": "", "adjustable": false, "gap": true})
-	var playable := catalog.playable(config.active_slots())
-	rows.append({"id": "pool", "label": "Karten wählen …",
-		"value": "%d von %d Karten" % [config.effective_pool(playable).size(), playable.size()], "adjustable": false})
-	rows.append({"id": "order", "label": "Reihenfolge", "value": config.order_label(), "adjustable": true})
-	rows.append({"id": "positions", "label": "Startpositionen", "value": config.random_positions_label(), "adjustable": true})
-	rows.append({"id": "mapdir", "label": "Externe Karten", "value": _external_dir_label(), "adjustable": false, "gap": true})
-	rows.append({"id": "points", "label": "Punkte zum Sieg", "value": str(config.points_to_win), "adjustable": true})
-	rows.append({"id": "time", "label": "Sudden Death nach", "value": "%d s" % config.round_time_s, "adjustable": true})
-	rows.append({"id": "music", "label": "Musik", "value": config.music_label(), "adjustable": true, "gap": true})
-	rows.append({"id": "sfx", "label": "Ton-Effekte", "value": config.sfx_label(), "adjustable": true})
 	if is_game_active:
 		rows.append({"id": "resume", "label": "[b]Weiterspielen (Resume)[/b]", "value": "", "adjustable": false, "gap": true})
 		rows.append({"id": "start", "label": "[b]Neues Match starten[/b]", "value": "", "adjustable": false})
@@ -158,9 +138,47 @@ func _main_rows() -> Array[Dictionary]:
 		if not blocker.is_empty():
 			label += " [color=#ff8a80](%s)[/color]" % blocker
 		rows.append({"id": "start", "label": label, "value": "", "adjustable": false, "gap": true})
+	rows.append({"id": "players", "label": "Spieler & Teams", "value": _players_summary(), "adjustable": false})
+	var playable := catalog.playable(config.active_slots())
+	rows.append({"id": "pool", "label": "Karten", "value": "%d von %d • %s" % [config.effective_pool(playable).size(), playable.size(), config.order_label().to_lower()], "adjustable": false})
+	rows.append({"id": "match", "label": "Match", "value": _match_summary(), "adjustable": false})
+	rows.append({"id": "settings", "label": "Einstellungen", "value": _settings_summary(), "adjustable": false})
 	rows.append({"id": "help", "label": "Steuerung & Hilfe", "value": "", "adjustable": false})
 	rows.append({"id": "quit", "label": "Spiel beenden", "value": "", "adjustable": false})
 	return rows
+
+
+func _players_summary() -> String:
+	var active := config.active_slots()
+	if active.is_empty():
+		return "keiner"
+	var humans := 0
+	var ais := 0
+	var teams_used: Dictionary = {}
+	for slot in active:
+		if config.slots[slot] == GameConfig.Controller.AI:
+			ais += 1
+		else:
+			humans += 1
+		var team := config.effective_team(slot)
+		if team > 0:
+			teams_used[team] = true
+	if teams_used.size() > 0:
+		return "%d aktiv • %d Teams" % [active.size(), teams_used.size()]
+	return "%d aktiv (%dM/%dAI)" % [active.size(), humans, ais]
+
+
+func _match_summary() -> String:
+	return "%d Punkte • %d s • Startpos: %s" % [config.points_to_win, config.round_time_s, config.random_positions_label().to_lower()]
+
+
+func _settings_summary() -> String:
+	var path := config.external_map_dir
+	if path.is_empty():
+		path = "Standard"
+	else:
+		path = path.get_file() if path.get_file() != "" else path.get_basename()
+	return "Musik: %s • SFX: %s • Karten: %s" % [config.music_label(), config.sfx_label(), path]
 
 
 func _row_index(id: String) -> int:
@@ -192,6 +210,10 @@ func _row_count() -> int:
 			return GameConfig.SLOT_COUNT * 2
 		Mode.MAPS:
 			return catalog.names.size()
+		Mode.MATCH:
+			return 4
+		Mode.SETTINGS:
+			return 3
 	return _main_rows().size()
 
 
@@ -294,6 +316,26 @@ func _change(step: int) -> void:
 		if _row % 2 == 1:
 			config.cycle_team(floori(_row / 2.0), step)
 		return
+	if _mode == Mode.MATCH:
+		match _row:
+			0:
+				config.cycle_points(step)
+			1:
+				config.cycle_round_time(step)
+			2:
+				config.toggle_random_positions()
+			3:
+				config.random_order = not config.random_order
+		return
+	if _mode == Mode.SETTINGS:
+		match _row:
+			0:
+				config.cycle_music(step)
+				audio_changed.emit()
+			1:
+				config.cycle_sfx(step)
+				audio_changed.emit()
+		return
 	if _mode != Mode.MAIN:
 		return
 	var id := _row_id()
@@ -324,6 +366,9 @@ func _accept() -> void:
 				_change(1)
 		Mode.MAPS:
 			_accept_map_row()
+		Mode.SETTINGS:
+			if _row == 2:
+				_begin_edit("mapdir", config.external_map_dir)
 		_:
 			_accept_main_row()
 
@@ -347,8 +392,12 @@ func _accept_main_row() -> void:
 		"pool":
 			_enter_submenu(Mode.MAPS)
 			_map_scroll = 0
-		"mapdir":
-			_begin_edit("mapdir", config.external_map_dir)
+		"match":
+			_enter_submenu(Mode.MATCH)
+			_row = 0
+		"settings":
+			_enter_submenu(Mode.SETTINGS)
+			_row = 0
 		_:
 			_change(1)
 
@@ -384,6 +433,10 @@ func _render() -> void:
 			_render_players()
 		Mode.MAPS:
 			_render_maps()
+		Mode.MATCH:
+			_render_match()
+		Mode.SETTINGS:
+			_render_settings()
 		_:
 			_render_main()
 
@@ -404,15 +457,15 @@ func _render_main() -> void:
 
 
 func _render_players() -> void:
-	var lines: Array[String] = ["[center][b]Namen & Teams[/b][/center]", ""]
-	var visible_slots := floori(VISIBLE_PLAYER_ROWS / 2.0)
-	var current_slot := floori(_row / 2.0)
-	if current_slot < _player_first_slot:
-		_player_first_slot = current_slot
-	elif current_slot >= _player_first_slot + visible_slots:
-		_player_first_slot = current_slot - visible_slots + 1
-	var first_slot := _player_first_slot
-	var last_slot := mini(first_slot + visible_slots, GameConfig.SLOT_COUNT)
+	var lines: Array[String] = ["[center][b]Spieler & Teams[/b][/center]", ""]
+	if _row < _player_scroll:
+		_player_scroll = _row
+	elif _row >= _player_scroll + VISIBLE_PLAYER_ROWS:
+		_player_scroll = _row - VISIBLE_PLAYER_ROWS + 1
+	if _player_scroll % 2 != 0:
+		_player_scroll -= 1
+	var first_slot := floori(_player_scroll / 2.0)
+	var last_slot := mini(first_slot + floori(VISIBLE_PLAYER_ROWS / 2.0), GameConfig.SLOT_COUNT)
 	if first_slot > 0:
 		lines.append("[color=#888888]↑ weitere Spieler[/color]")
 	for slot in range(first_slot, last_slot):
@@ -435,6 +488,29 @@ func _render_players() -> void:
 	lines.append("")
 	var hint := "Name tippen, Enter bestätigt, Esc bricht ab" if _editing else \
 		"Enter: Name ändern, ←→: Team wechseln, Esc / B: zurück"
+	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
+	_text.text = "\n".join(lines)
+
+
+func _render_match() -> void:
+	var lines: Array[String] = ["[center][b]Match[/b][/center]", ""]
+	lines.append(_row_line(0, "Punkte zum Sieg", str(config.points_to_win), true))
+	lines.append(_row_line(1, "Sudden Death nach", "%d s" % config.round_time_s, true))
+	lines.append(_row_line(2, "Startpositionen", config.random_positions_label(), true))
+	lines.append(_row_line(3, "Reihenfolge", config.order_label(), true))
+	lines.append("")
+	lines.append("[center][color=#aaaaaa]↑↓ wählen, ←→ ändern, Esc / B: zurück[/color][/center]")
+	_text.text = "\n".join(lines)
+
+
+func _render_settings() -> void:
+	var lines: Array[String] = ["[center][b]Einstellungen[/b][/center]", ""]
+	lines.append(_row_line(0, "Musik", config.music_label(), true))
+	lines.append(_row_line(1, "Ton-Effekte", config.sfx_label(), true))
+	lines.append(_row_line(2, "Externe Karten", _external_dir_label(), false))
+	lines.append("")
+	var hint := "Pfad eingeben, Enter bestätigt, Esc bricht ab" if _editing and _edit_kind == "mapdir" else \
+		"↑↓ wählen, ←→ ändern, Enter: Pfad bearbeiten, Esc / B: zurück"
 	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
 	_text.text = "\n".join(lines)
 
@@ -492,10 +568,10 @@ func _render_help() -> void:
 		"  [b]F5[/b]         Neues Match starten (Punkte zurücksetzen)",
 		"",
 		"[color=#ffaaee][b]Karten & Teams:[/b][/color]",
-		"  Unter [b]Karten wählen[/b] wählst du die Karten des Matches; nach jeder Runde folgt die nächste Karte,",
+			"  Unter [b]Karten[/b] wählst du die Karten des Matches; nach jeder Runde folgt die nächste Karte,",
 		"  [b]Reihenfolge[/b] legt fest, ob zufällig (jede Karte einmal pro Durchgang) oder der Reihe nach gespielt wird.",
 		"  [b]Startpositionen[/b] verteilt die Startfelder zufällig auf die aktiven Spieler (wie im Original).",
-		"  [b]Externe Karten[/b]: zusätzlichen Ordner mit .map-Dateien eintragen; er wird beim Start mitgeladen.",
+		"  Unter [b]Einstellungen[/b] kannst du einen externen Kartenordner eintragen; er wird beim Start mitgeladen.",
 		"  Alternativ beim Start CLANBOMBER_MAPS_DIR setzen; user://maps wird immer mitgelesen.",
 		"  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.",
 		"",
