@@ -458,14 +458,14 @@ func _render_main() -> void:
 
 func _render_players() -> void:
 	var lines: Array[String] = ["[center][b]Spieler & Teams[/b][/center]", ""]
-	if _row < _player_scroll:
-		_player_scroll = _row
-	elif _row >= _player_scroll + VISIBLE_PLAYER_ROWS:
-		_player_scroll = _row - VISIBLE_PLAYER_ROWS + 1
-	if _player_scroll % 2 != 0:
-		_player_scroll -= 1
-	var first_slot := floori(_player_scroll / 2.0)
-	var last_slot := mini(first_slot + floori(VISIBLE_PLAYER_ROWS / 2.0), GameConfig.SLOT_COUNT)
+	var visible_slots := floori(VISIBLE_PLAYER_ROWS / 2.0)
+	var current_slot := floori(_row / 2.0)
+	if current_slot < _player_first_slot:
+		_player_first_slot = current_slot
+	elif current_slot >= _player_first_slot + visible_slots:
+		_player_first_slot = current_slot - visible_slots + 1
+	var first_slot := _player_first_slot
+	var last_slot := mini(first_slot + visible_slots, GameConfig.SLOT_COUNT)
 	if first_slot > 0:
 		lines.append("[color=#888888]↑ weitere Spieler[/color]")
 	for slot in range(first_slot, last_slot):
