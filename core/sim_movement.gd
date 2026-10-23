@@ -23,8 +23,6 @@ static func _step(world: SimWorld, player: SimPlayer, dir: Vector2i) -> bool:
 		if player.can_kick and bomb.move_dir == Vector2i.ZERO:
 			world.kick_bomb(bomb, dir)
 		return false
-	if ahead != player.cell and world.is_other_player_in(ahead, player.id):
-		return false
 	player.pos += dir
 	_slide_into_lane(world, player, dir)
 	return true
