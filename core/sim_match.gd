@@ -42,10 +42,17 @@ func update(world: SimWorld) -> bool:
 				return false
 			alive.append(id)
 			factions[_faction_key(id, player.team)] = true
-	if factions.size() > 1 or not world.explosions.is_empty():
+	if factions.size() > 1 or not world.explosions.is_empty() or _has_flying_bomb(world):
 		return false
 	_finish_round(world, alive)
 	return true
+
+
+static func _has_flying_bomb(world: SimWorld) -> bool:
+	for bomb: SimBomb in world.bombs:
+		if bomb.flying:
+			return true
+	return false
 
 
 # Teams teilen sich eine Partei; Einzelspieler (Team 0) sind je eine eigene.

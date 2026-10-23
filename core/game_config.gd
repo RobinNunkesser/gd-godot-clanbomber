@@ -3,9 +3,9 @@ extends RefCounted
 ## Matcheinstellungen aus dem Menü: Steuerung, Namen und Teams je Spielerplatz, Kartenauswahl samt Reihenfolge,
 ## Punkte zum Sieg, Sudden-Death-Zeit und Lautstärken. Lässt sich als ConfigFile speichern und laden.
 
-enum Controller { OFF, KEYBOARD_1, KEYBOARD_2, PAD_1, PAD_2, PAD_3, PAD_4, AI }
+enum Controller { OFF, KEYBOARD_1, KEYBOARD_2, PAD_1, PAD_2, PAD_3, PAD_4, PAD_5, PAD_6, PAD_7, PAD_8, AI }
 
-const SLOT_COUNT := 4
+const SLOT_COUNT := 8
 const MIN_POINTS := 1
 const MAX_POINTS := 10
 const NAMES := {
@@ -16,6 +16,10 @@ const NAMES := {
 	Controller.PAD_2: "Gamepad 2",
 	Controller.PAD_3: "Gamepad 3",
 	Controller.PAD_4: "Gamepad 4",
+	Controller.PAD_5: "Gamepad 5",
+	Controller.PAD_6: "Gamepad 6",
+	Controller.PAD_7: "Gamepad 7",
+	Controller.PAD_8: "Gamepad 8",
 	Controller.AI: "AI",
 }
 
@@ -33,12 +37,19 @@ const DEFAULT_ROUND_TIME_S := 90
 const VOLUME_LEVELS: Array[String] = ["Aus", "25 %", "50 %", "75 %", "100 %"]
 const VOLUME_DBS: Array[float] = [-80.0, -18.0, -10.0, -4.0, 0.0]
 
-var slots: Array[int] = [Controller.KEYBOARD_1, Controller.AI, Controller.OFF, Controller.OFF]
-var names: Array[String] = ["", "", "", ""]
-var teams: Array[int] = [0, 0, 0, 0]
+var slots: Array[int] = [
+	Controller.KEYBOARD_1, Controller.AI, Controller.OFF, Controller.OFF,
+	Controller.OFF, Controller.OFF, Controller.OFF, Controller.OFF,
+]
+var names: Array[String] = ["", "", "", "", "", "", "", ""]
+var teams: Array[int] = [0, 0, 0, 0, 0, 0, 0, 0]
 # Karten, die im Match gespielt werden; nach jeder Runde folgt die nächste (zufällig oder der Reihe nach).
 var map_pool: Array[String] = []
 var random_order := true
+# Zusätzlicher Ordner für externe Karten (z. B. das separate Originalkarten-Paket).
+var external_map_dir := ""
+# Startfelder bei Rundenstart zufällig unter den aktiven Spielern verteilen (Original: random_positions = true).
+var random_positions := true
 var points_to_win := SimConstants.POINTS_TO_WIN
 var round_time_s := DEFAULT_ROUND_TIME_S
 
@@ -73,7 +84,7 @@ func active_slots() -> Array[int]:
 # Gamepad-Gerätenummer (0-basiert) oder -1, wenn der Platz kein Gamepad nutzt.
 func pad_device(slot: int) -> int:
 	var controller := slots[slot]
-	if controller >= Controller.PAD_1 and controller <= Controller.PAD_4:
+	if controller >= Controller.PAD_1 and controller <= Controller.PAD_8:
 		return controller - Controller.PAD_1
 	return -1
 
@@ -154,6 +165,14 @@ func round_time_ms() -> int:
 
 func order_label() -> String:
 	return "Zufällig" if random_order else "Der Reihe nach"
+
+
+func random_positions_label() -> String:
+	return "Zufällig" if random_positions else "Fest"
+
+
+func toggle_random_positions() -> void:
+	random_positions = not random_positions
 
 
 func select_all(playable: Array[String]) -> void:
@@ -250,7 +269,9 @@ func save_to(path: String) -> Error:
 	file.set_value("match", "names", names)
 	file.set_value("match", "teams", teams)
 	file.set_value("match", "map_pool", map_pool)
+	file.set_value("match", "external_map_dir", external_map_dir)
 	file.set_value("match", "random_order", random_order)
+	file.set_value("match", "random_positions", random_positions)
 	file.set_value("match", "points_to_win", points_to_win)
 	file.set_value("match", "round_time_s", round_time_s)
 	file.set_value("audio", "music", music_volume)
@@ -264,10 +285,12 @@ func load_from(path: String, known_maps: Array[String]) -> void:
 	if file.load(path) != OK:
 		return
 	var saved_slots: Array = file.get_value("match", "slots", [])
-	if saved_slots.size() == SLOT_COUNT:
+	if saved_slots.size() > 0 and saved_slots.size() <= SLOT_COUNT:
 		var restored: Array[int] = []
 		for value in saved_slots:
 			restored.append(clampi(int(value), 0, Controller.size() - 1))
+		while restored.size() < SLOT_COUNT:
+			restored.append(Controller.OFF)
 		if _has_unique_devices(restored):
 			slots = restored
 	var saved_names: Array = file.get_value("match", "names", [])
@@ -277,10 +300,13 @@ func load_from(path: String, known_maps: Array[String]) -> void:
 	for slot in mini(saved_teams.size(), SLOT_COUNT):
 		teams[slot] = clampi(int(saved_teams[slot]), 0, TEAM_COUNT)
 	random_order = bool(file.get_value("match", "random_order", random_order))
+	random_positions = bool(file.get_value("match", "random_positions", random_positions))
+	external_map_dir = str(file.get_value("match", "external_map_dir", external_map_dir)).strip_edges()
 	var saved_pool: Array = file.get_value("match", "map_pool", [])
 	map_pool = []
 	for value in saved_pool:
-		if known_maps.has(str(value)):
+		# Bei leerer Bekanntliste bleibt die Auswahl erhalten; der Aufrufer validiert sie nach dem Karten-Scan.
+		if known_maps.is_empty() or known_maps.has(str(value)):
 			map_pool.append(str(value))
 	points_to_win = clampi(int(file.get_value("match", "points_to_win", points_to_win)), MIN_POINTS, MAX_POINTS)
 	var saved_time := int(file.get_value("match", "round_time_s", round_time_s))

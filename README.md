@@ -8,7 +8,7 @@ Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot
 
 Aktueller Stand und nächste Schritte: [STATUS.md](STATUS.md). Details zu Lizenzen und Drittinhalten: [THIRD_PARTY.md](THIRD_PARTY.md).
 
-## Stand: Slice 7 (Rundenverwaltung)
+## Stand: Slice 11 (8 Spieler, externe Karten, Intro & Hurry-Up)
 
 Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahligen Millisekunden für bitgenaue Reproduzierbarkeit:
 
@@ -21,11 +21,11 @@ Reine `RefCounted`-Logik in `core/`, ohne Node-Abhängigkeit und mit ganzzahlige
 | `sim_world.gd` (Extras) | Aufnahme per Betreten, Obergrenzen, Heilen durch jede Aufnahme (Krankheits-Extra taucht neu auf), Overdrive/Reverse/Autobomb (10 s), Ansteckung, Extras fallen beim Tod |
 | `sim_bomb.gd`, `sim_movement.gd` | Kick (Bombe rollt mit 160 px/s bis zum Hindernis und schnappt ein), Wurf mit Glove (4 Zellen, Zünder steht während des Flugs, Wände und Boxen halten an, auf besetzter Landezelle eine Zelle weiter) |
 | `sim_world.gd` (Kacheln) | Ice: Figuren rutschen mit 80 px/s in Blickrichtung weiter, gerollte Bomben werden schneller. Arrow: schiebt Bomben in Pfeilrichtung, entgegenkommende Bomben werden 0,5 s gehalten und umgelenkt. Trap: hält Bomben 1 s, dann Flug (200 px/s, über Wände) auf ein zufälliges freies Feld, dort Zünder 10 ms |
-| `map_catalog.gd`, `map_rotation.gd` | Kartenkatalog mit Filter nach Startplätzen (`is_playable`, `playable`) und Kartenrotation (Shuffle-Bag oder der Reihe nach über die ausgewählten Karten) |
-| `sim_match.gd` | Runden- und Teamverwaltung: Rundenende (höchstens eine überlebende Partei), Teampunkte, Siegesbedingung (Einzelspieler: Punkte zum Sieg; Team: `team_points >= team_size * points_to_win`), Ranking |
+| `map_catalog.gd`, `map_rotation.gd` | Kartenkatalog aus mehreren Ordnern (`load_dirs`, Quellpfade, erster Ordner gewinnt bei Namenskonflikten), Filter nach Startplätzen (`is_playable`, `playable`) und Kartenrotation (Shuffle-Bag oder der Reihe nach über die ausgewählten Karten) |
+| `sim_match.gd` | Runden- und Teamverwaltung: Rundenende (höchstens eine überlebende Partei, keine laufenden Explosionen, fallenden Spieler oder fliegenden Bomben), Teampunkte, Siegesbedingung (Einzelspieler: Punkte zum Sieg; Team: `team_points >= team_size * points_to_win`), Ranking |
 | `sim_observer.gd`, `sim_world.gd` (Sudden Death) | Einstellbare Rundenzeit (15–300 s, Standard 90 s): Observer fliegt zu zufälligen Feldern, Boden wird zu Löchern, Mauern zu Boden, Boxen zerbrechen |
 | `sim_ai.gd` | Heuristik-AI: flieht aus Gefahrenzonen, legt Bomben nur mit Fluchtweg, sprengt Boxen, jagt Gegner (ignoriert Teamkameraden), sammelt Extras |
-| `game_config.gd` | Matcheinstellungen mit Persistenz: 4 Plätze (Aus, Tastatur 1/2, Gamepad 1-4, AI), eigene Spielernamen, Teams (Blood, Gold, Water, Leaf), Kartenauswahl (Pool, Reihenfolge zufällig oder der Reihe nach), Sudden Death Zeit, Punkte (1-10) und Audio-Lautstärken |
+| `game_config.gd` | Matcheinstellungen mit Persistenz: 8 Plätze (Aus, Tastatur 1/2, Gamepad 1-8, AI), eigene Spielernamen, Teams (Blood, Gold, Water, Leaf), Kartenauswahl (Pool, Reihenfolge zufällig oder der Reihe nach), optionale Zufalls-Startpositionen, externer Kartenordner, Sudden Death Zeit, Punkte (1-10) und Audio-Lautstärken |
 | `sim_extra.gd` | Extra-Drop-Verteilung wie im Original |
 
 ## Spiel starten & Steuerung
@@ -41,7 +41,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Sieger-Bildschirm: ↑↓, Enter / A | "Neues Match" oder "Zurück zum Menü" wählen |
 | Tastatur 1: WASD, Leertaste | bewegen, Bombe legen |
 | Tastatur 2: Pfeiltasten, Enter | bewegen, Bombe legen |
-| Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-4 im Menü zuordnen) |
+| Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-8 im Menü zuordnen) |
 | R | Runde neu starten |
 | M | Musik stummschalten / aktivieren (Mute) |
 | F4 | Ton-Effekte stummschalten / aktivieren (Mute) |
@@ -61,11 +61,11 @@ Extras werden durch Betreten aufgenommen. Kennbuchstaben: Kreis = Extra, Quadrat
 | K | Kick | | | |
 | G | Glove | | | |
 
-Unter der Arena steht je Spieler `B` Bomben, `P` Power, `S` Skateboards, `K`/`G` falls vorhanden und die aktive Krankheit mit Restsekunden. Kranke Spieler tragen einen farbigen Rahmen mit dem Buchstaben. Kein Ton.
+Unter der Arena steht je Spieler `B` Bomben, `P` Power, `S` Skateboards, `K`/`G` falls vorhanden und die aktive Krankheit mit Restsekunden; bei acht Spielern werden die Zeilen umbrochen. Vor jeder Runde fliegen die Bomber zur Startposition (Steuerung gesperrt), bei 20 s Restzeit erscheint „HURRY UP!“ mit Signalton. Kranke Spieler tragen einen farbigen Rahmen mit dem Buchstaben. Musik und Effekte laufen über eigene Audio-Busse.
 
 ## Tests
 
-GdUnit4 (v6.2.2, unter `addons/` mitgeliefert), Godot 4.7:
+GdUnit4 (v6.2.2, unter `addons/` mitgeliefert), Godot 4.7. Aktuell laufen 177 Tests (175 Kern, 2 Präsentation) grün; der GitHub-Actions-Workflow `.github/workflows/test.yml` führt sie bei Push und Pull Request aus:
 
 ```sh
 GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
@@ -73,9 +73,18 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 `map_parser_test.gd` lädt zusätzlich alle Originalkarten, wenn der Referenzbaum im Monorepo (`artifacts/references/forks/ClanBomber2/src/maps`) oder `CLANBOMBER_MAPS_DIR` verfügbar ist, sonst wird dieser Test übersprungen. Die Originalkarten sind bewusst nicht Teil dieses Repos (Lizenz-/Rechteklärung offen).
 
+## Bekannte Lücken gegenüber dem GDD
+
+- Die 177-ms-Sperre beim Bombenlegen ist nicht implementiert (durch Tasten-Events praktisch entschärft).
+- Der optionale Kids-Mode (Cube Pets) ist noch nicht umgesetzt.
+- Die 33 Originalkarten sind nicht gebündelt; sie werden bei Bedarf aus einem externen Ordner geladen.
+- Freeze ist bewusst nicht implementiert (im Original Totcode); der Glove-Wurf stoppt an Wänden und Boxen.
+
 ## Karten
 
-`maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). Die Autorenangaben im Dateikopf lauten auf *Robin Nunkesser* (23 Karten), *anonymous hendrik* (13 Karten) und *cjl* (1 Karte) – alle vom Repo-Eigentümer erstellt. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos.
+`maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). Die Autorenangaben im Dateikopf lauten auf *Robin Nunkesser* (23 Karten), *anonymous hendrik* (13 Karten) und *cjl* (1 Karte) – alle vom Repo-Eigentümer erstellt.
+
+Zur Laufzeit werden zusätzlich `user://maps`, der im Menü unter **Externe Karten** eingetragene Ordner und die Umgebungsvariable `CLANBOMBER_MAPS_DIR` gelesen. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos; bei Namenskonflikten gewinnt `res://maps`.
 
 ## Export & Testversionen
 
@@ -90,6 +99,7 @@ Das Projekt ist mit Export-Presets (`export_presets.cfg`) für **Windows Desktop
   Unter `.github/workflows/export.yml` ist ein Workflow eingerichtet:
   - **Manuell:** Kann im GitHub-Web-Interface unter *Actions* $\to$ *Export & Release* $\to$ *Run workflow* jederzeit per Klick ausgelöst werden. Die fertigen ZIP-Dateien (Windows, Linux, macOS, Web) stehen anschließend direkt als Run-Artifacts zum Download bereit.
   - **Automatisch bei Release:** Wird ein Git-Tag (z. B. `v0.1.0`) gepusht, erzeugt die Action automatisch ein GitHub Release mit allen Plattform-ZIPs als Download-Anhänge.
+- **Tests:** `.github/workflows/test.yml` installiert Godot 4.7.2 und führt bei jedem Push und Pull Request `addons/gdUnit4/runtest.sh -a test` aus.
 
 ## Credits & Third-Party Assets
 

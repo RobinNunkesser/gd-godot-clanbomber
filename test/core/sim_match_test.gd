@@ -69,6 +69,18 @@ func test_round_waits_for_falling_survivor() -> void:
 	assert_bool(match_state.update(world)).is_true()
 
 
+func test_round_waits_for_flying_bomb() -> void:
+	var world := _world()
+	var match_state := SimMatch.new()
+	world.players[2].alive = false
+	var bomb := SimBomb.new()
+	bomb.flying = true
+	world.bombs.append(bomb)
+	assert_bool(match_state.update(world)).is_false()
+	world.bombs.clear()
+	assert_bool(match_state.update(world)).is_true()
+
+
 func test_round_is_awarded_only_once() -> void:
 	var world := _world()
 	var match_state := SimMatch.new()

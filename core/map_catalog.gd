@@ -6,25 +6,44 @@ extends RefCounted
 # Sortierte Dateinamen aller gültigen Karten.
 var names: Array[String] = []
 var _data: Dictionary = {}
+# Dateiname -> vollständiger Pfad der Quelle (für externe Kartenordner).
+var _paths: Dictionary = {}
 
 
 static func load_dir(dir: String) -> MapCatalog:
+	var dirs: Array[String] = [dir]
+	return load_dirs(dirs)
+
+
+# Lädt mehrere Ordner. Bei gleichem Dateinamen gewinnt der zuerst geladene Ordner.
+static func load_dirs(dirs: Array[String]) -> MapCatalog:
 	var catalog := MapCatalog.new()
-	for file in DirAccess.get_files_at(dir):
-		if file.ends_with(".map"):
-			catalog.add(file, FileAccess.get_file_as_string(dir.path_join(file)))
+	for dir in dirs:
+		if dir.is_empty() or not DirAccess.dir_exists_absolute(dir):
+			continue
+		for file in DirAccess.get_files_at(dir):
+			if file.ends_with(".map"):
+				catalog.add(file, FileAccess.get_file_as_string(dir.path_join(file)), dir)
 	return catalog
 
 
-# Ungültige Karten werden ausgelassen.
-func add(map_name: String, text: String) -> void:
+# Ungültige Karten werden ausgelassen; ein bereits vorhandener Name wird nicht überschrieben.
+func add(map_name: String, text: String, source_dir: String = "") -> void:
+	if _data.has(map_name):
+		return
 	var data := MapParser.parse(text)
 	if not data.is_valid():
 		return
 	_data[map_name] = data
+	_paths[map_name] = source_dir.path_join(map_name) if not source_dir.is_empty() else map_name
 	if not names.has(map_name):
 		names.append(map_name)
 		names.sort()
+
+
+# Vollständiger Pfad einer Katalogkarte (bei testweise direkt hinzugefügten Karten nur der Name).
+func file_path(map_name: String) -> String:
+	return _paths.get(map_name, "")
 
 
 func has_map(map_name: String) -> bool:

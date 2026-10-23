@@ -24,11 +24,23 @@ func test_keyboard_cannot_be_assigned_twice() -> void:
 
 func test_cycle_wraps_and_ai_can_repeat() -> void:
 	var config := GameConfig.new()
-	config.slots = [GameConfig.Controller.AI, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF]
+	config.slots = [
+		GameConfig.Controller.AI, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+		GameConfig.Controller.OFF, GameConfig.Controller.OFF, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+	]
 	config.cycle_slot(0, 1)
 	assert_int(config.slots[0]).is_equal(GameConfig.Controller.OFF)
 	config.cycle_slot(0, -1)
 	assert_int(config.slots[0]).is_equal(GameConfig.Controller.AI)
+
+
+func test_supports_eight_slots_and_gamepads() -> void:
+	var config := GameConfig.new()
+	assert_int(GameConfig.SLOT_COUNT).is_equal(8)
+	assert_int(GameConfig.Controller.size()).is_equal(12)
+	config.slots[7] = GameConfig.Controller.PAD_8
+	assert_int(config.pad_device(7)).is_equal(7)
+	assert_array(config.active_slots()).is_equal([0, 1, 7])
 
 
 func test_points_are_clamped() -> void:
@@ -177,10 +189,15 @@ func test_save_and_load_roundtrip() -> void:
 	var path := "user://test_settings_roundtrip.cfg"
 	var known: Array[String] = ["a.map", "b.map"]
 	var config := GameConfig.new()
-	config.slots = [GameConfig.Controller.KEYBOARD_2, GameConfig.Controller.PAD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF]
+	config.slots = [
+		GameConfig.Controller.KEYBOARD_2, GameConfig.Controller.PAD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF,
+		GameConfig.Controller.OFF, GameConfig.Controller.PAD_8, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+	]
 	config.set_name(0, "Robin")
-	config.teams = [1, 1, 0, 0]
+	config.teams = [1, 1, 0, 0, 0, 1, 0, 0]
 	config.random_order = false
+	config.random_positions = false
+	config.external_map_dir = "/tmp/clanbomber-maps"
 	config.map_pool = ["b.map"]
 	config.points_to_win = 7
 	config.round_time_s = 45
@@ -191,14 +208,39 @@ func test_save_and_load_roundtrip() -> void:
 	loaded.load_from(path, known)
 	assert_array(loaded.slots).is_equal(config.slots)
 	assert_str(loaded.name_of(0)).is_equal("Robin")
-	assert_array(loaded.teams).is_equal([1, 1, 0, 0])
+	assert_array(loaded.teams).is_equal([1, 1, 0, 0, 0, 1, 0, 0])
 	assert_bool(loaded.random_order).is_false()
+	assert_bool(loaded.random_positions).is_false()
+	assert_str(loaded.external_map_dir).is_equal("/tmp/clanbomber-maps")
 	assert_array(loaded.map_pool).is_equal(["b.map"])
 	assert_int(loaded.points_to_win).is_equal(7)
 	assert_int(loaded.round_time_s).is_equal(45)
 	assert_int(loaded.music_volume).is_equal(2)
 	assert_int(loaded.sfx_volume).is_equal(3)
 	DirAccess.remove_absolute(path)
+
+
+func test_old_four_slot_settings_are_padded() -> void:
+	var path := "user://test_settings_migration.cfg"
+	var file := ConfigFile.new()
+	file.set_value("match", "slots", [GameConfig.Controller.KEYBOARD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF])
+	file.save(path)
+	var loaded := GameConfig.new()
+	loaded.load_from(path, [] as Array[String])
+	assert_array(loaded.slots).is_equal([
+		GameConfig.Controller.KEYBOARD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+		GameConfig.Controller.OFF, GameConfig.Controller.OFF, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+	])
+	DirAccess.remove_absolute(path)
+
+
+func test_random_positions_toggle() -> void:
+	var config := GameConfig.new()
+	assert_bool(config.random_positions).is_true()
+	assert_str(config.random_positions_label()).is_equal("Zufällig")
+	config.toggle_random_positions()
+	assert_bool(config.random_positions).is_false()
+	assert_str(config.random_positions_label()).is_equal("Fest")
 
 
 func test_load_ignores_unknown_maps_and_invalid_values() -> void:
@@ -214,7 +256,10 @@ func test_load_ignores_unknown_maps_and_invalid_values() -> void:
 	var known: Array[String] = ["a.map"]
 	var loaded := GameConfig.new()
 	loaded.load_from(path, known)
-	assert_array(loaded.slots).is_equal([GameConfig.Controller.KEYBOARD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF])
+	assert_array(loaded.slots).is_equal([
+		GameConfig.Controller.KEYBOARD_1, GameConfig.Controller.AI, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+		GameConfig.Controller.OFF, GameConfig.Controller.OFF, GameConfig.Controller.OFF, GameConfig.Controller.OFF,
+	])
 	assert_bool(loaded.random_order).is_true()
 	assert_array(loaded.map_pool).is_equal(["a.map"])
 	assert_int(loaded.points_to_win).is_equal(GameConfig.MAX_POINTS)

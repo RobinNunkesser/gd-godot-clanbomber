@@ -62,3 +62,19 @@ func test_bundled_maps_are_catalogued() -> void:
 	var four: Array[int] = [0, 1, 2, 3]
 	assert_int(catalog.playable(two).size()).is_greater(0)
 	assert_int(catalog.playable(four).size()).is_less_equal(catalog.playable(two).size())
+
+
+func test_load_dirs_keeps_source_paths() -> void:
+	var dirs: Array[String] = [MAP_DIR]
+	var catalog := MapCatalog.load_dirs(dirs)
+	assert_int(catalog.names.size()).is_greater_equal(2)
+	for map_name in catalog.names:
+		var path := catalog.file_path(map_name)
+		assert_bool(path.begins_with(MAP_DIR + "/")).is_true()
+		assert_bool(FileAccess.file_exists(path)).is_true()
+
+
+func test_empty_and_missing_dirs_are_ignored() -> void:
+	var dirs: Array[String] = ["", "res://definitely_missing_maps"]
+	var catalog := MapCatalog.load_dirs(dirs)
+	assert_array(catalog.names).is_empty()

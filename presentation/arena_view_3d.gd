@@ -60,6 +60,9 @@ var _extras: Dictionary = {}
 var _flames: Dictionary = {}
 var _players: Dictionary = {}
 var _time := 0.0
+var _intro_active := false
+var _intro_elapsed := 0.0
+var _intro_duration := 0.9
 
 var _wall_mesh := BoxMesh.new()
 var _box_mesh := BoxMesh.new()
@@ -238,9 +241,16 @@ func _sync_tiles() -> void:
 
 func _make_player(id: int) -> Node3D:
 	var root := Node3D.new()
-	var model: Node3D = load(_character_path(CHARACTER_MODELS[(id - 1) % CHARACTER_MODELS.size()])).instantiate()
+	var model_index := (id - 1) % CHARACTER_MODELS.size()
+	var model: Node3D = load(_character_path(CHARACTER_MODELS[model_index])).instantiate()
 	model.name = "Model"
 	model.scale = Vector3.ONE * 0.85
+	if model_index >= 6:
+		# Spieler 7/8 nutzen Modelle von 1/2; eine farbige Überlagerung hält sie unterscheidbar.
+		var tint := PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()]
+		var overlay := _material(Color(tint.r, tint.g, tint.b, 0.45), true)
+		for mesh in model.find_children("*", "MeshInstance3D", true, false):
+			(mesh as MeshInstance3D).material_overlay = overlay
 	root.add_child(model)
 	var ring := MeshInstance3D.new()
 	var torus := CylinderMesh.new()
@@ -280,9 +290,23 @@ func _animation_player(root: Node) -> AnimationPlayer:
 	return root.find_child("AnimationPlayer", true, false) as AnimationPlayer
 
 
+func play_intro(duration := 0.9) -> void:
+	_intro_active = true
+	_intro_elapsed = 0.0
+	_intro_duration = maxf(duration, 0.01)
+
+
+func is_intro_running() -> bool:
+	return _intro_active
+
+
 func _process(delta: float) -> void:
 	if world == null:
 		return
+	if _intro_active:
+		_intro_elapsed += delta
+		if _intro_elapsed >= _intro_duration:
+			_intro_active = false
 	_time += delta
 	if _materials.has("tile_arrow"):
 		var arrow_mat: StandardMaterial3D = _materials["tile_arrow"]
@@ -519,6 +543,11 @@ func _sync_players() -> void:
 		var player: SimPlayer = world.players[id]
 		var node: Node3D = _players[id]
 		node.position = _world_pos(Vector2(player.pos))
+		if _intro_active:
+			var t := clampf(_intro_elapsed / _intro_duration, 0.0, 1.0)
+			t = t * t * (3.0 - 2.0 * t)
+			var center := Vector3(SimConstants.GRID_WIDTH / 2.0, 0.0, SimConstants.GRID_HEIGHT / 2.0)
+			node.position = center.lerp(node.position, t)
 		if player.is_falling():
 			node.position.y = -1.5 * (1.0 - clampf(float(player.fall_ms) / SimConstants.FALL_MS, 0.0, 1.0))
 		var face := Vector2(player.facing)

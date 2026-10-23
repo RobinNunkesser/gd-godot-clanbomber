@@ -48,6 +48,32 @@ func test_start_positions_are_ground() -> void:
 	assert_int(map.tiles[1 * 17 + 1]).is_equal(SimTile.Type.GROUND)
 
 
+func test_start_cells_keep_fixed_positions() -> void:
+	var map := MapParser.parse(CLASSIC)
+	var rng := RandomNumberGenerator.new()
+	var fixed := map.start_cells([3, 1], false, rng)
+	assert_that(fixed[3]).is_equal(map.starts[3])
+	assert_that(fixed[1]).is_equal(map.starts[1])
+
+
+func test_start_cells_shuffle_is_seeded() -> void:
+	var map := MapParser.parse(CLASSIC)
+	var rng_a := RandomNumberGenerator.new()
+	rng_a.seed = 42
+	var rng_b := RandomNumberGenerator.new()
+	rng_b.seed = 42
+	var active: Array[int] = [0, 1, 2, 3]
+	var a := map.start_cells(active, true, rng_a)
+	var b := map.start_cells(active, true, rng_b)
+	assert_dict(a).is_equal(b)
+	var used: Array[Vector2i] = []
+	for slot in active:
+		var cell: Vector2i = a[slot]
+		assert_bool(map.starts.values().has(cell)).is_true()
+		assert_bool(used.has(cell)).is_false()
+		used.append(cell)
+
+
 func test_special_tiles() -> void:
 	var lines := CLASSIC.split("\n")
 	lines[3] = "*S<>^vo-" + " ".repeat(8) + "*"

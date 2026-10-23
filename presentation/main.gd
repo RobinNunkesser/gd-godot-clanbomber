@@ -1,13 +1,17 @@
 extends Node2D
 ## Spielbarer Prototyp: lädt eine Karte, speist die Simulation und liest Eingaben.
-## Startmenü (Esc öffnet es): Steuerung je Platz (Tastatur 1/2, Gamepad 1-4, AI), Kartenauswahl, Punkte.
+## Startmenü (Esc öffnet es): Steuerung je Platz (Tastatur 1/2, Gamepad 1-8, AI), Kartenauswahl, Punkte.
 ## Tastatur 1: WASD + Leertaste, Tastatur 2: Pfeiltasten + Enter, Gamepad: D-Pad/linker Stick + A.
 ## R: Runde neu starten, F5: neues Match, M: Mute. (N = nächste Karte, F1/F3: Testhilfen, nicht in der Bedienung genannt.)
 
 const MAP_DIR := "res://maps"
+const USER_MAP_DIR := "user://maps"
 const SETTINGS_PATH := "user://settings.cfg"
 const PAD_DEADZONE := 0.5
 const CONTINUE_LOCK_MS := 800
+const INTRO_DURATION_S := 0.9
+const HURRY_LIMIT_MS := 20000
+const HURRY_BEEP_INTERVAL_MS := 900
 
 @onready var view3d: ArenaView3D = $ArenaView3D
 @onready var sfx: Sfx = $Sfx
@@ -23,6 +27,10 @@ var _clock_ms := 0.0
 var _match := SimMatch.new()
 var _scoreboard := Scoreboard.new()
 var _round_over := false
+var _intro := false
+var _hurry_started := false
+var _hurry_beep_at := 0
+var _hurry_threshold_ms := HURRY_LIMIT_MS
 var _continue_unlock_at := 0
 var _menu := GameMenu.new()
 var _ais: Dictionary = {}
@@ -37,19 +45,53 @@ func _ready() -> void:
 	_menu_music = _load_looping_stream("res://assets/audio/music/music_menu.ogg")
 	_game_music = _load_looping_stream("res://assets/audio/music/music_game.ogg")
 	_rng.randomize()
-	_catalog = MapCatalog.load_dir(MAP_DIR)
-	_menu.catalog = _catalog
-	_menu.config.load_from(SETTINGS_PATH, _catalog.names)
-	if _menu.config.map_pool.is_empty():
-		_menu.config.map_pool = _catalog.names.duplicate()
+	_menu.config.load_from(SETTINGS_PATH, [] as Array[String])
+	if _menu.config.external_map_dir.is_empty():
+		_menu.config.external_map_dir = OS.get_environment("CLANBOMBER_MAPS_DIR").strip_edges()
+	_rebuild_catalog()
 	$UI.add_child(_scoreboard)
 	$UI.add_child(_menu)
 	_menu.start_requested.connect(_start_match)
 	_menu.resume_requested.connect(_resume_game)
 	_menu.quit_requested.connect(_quit_game)
 	_menu.audio_changed.connect(_apply_audio_config)
+	_menu.map_dir_changed.connect(_on_map_dir_changed)
 	_apply_audio_config()
 	_open_menu()
+
+
+# Bündelt die mitgelieferten, den konfigurierten externen und den benutzerdefinierten Kartenordner.
+func _rebuild_catalog() -> void:
+	var dirs: Array[String] = [MAP_DIR]
+	var external := _expanded_path(_menu.config.external_map_dir)
+	if not external.is_empty():
+		dirs.append(external)
+	dirs.append(USER_MAP_DIR)
+	_catalog = MapCatalog.load_dirs(dirs)
+	_menu.catalog = _catalog
+	var known: Array[String] = []
+	for map in _menu.config.map_pool:
+		if _catalog.names.has(map):
+			known.append(map)
+	_menu.config.map_pool = known
+	if _menu.config.map_pool.is_empty():
+		_menu.config.map_pool = _catalog.names.duplicate()
+
+
+func _expanded_path(path: String) -> String:
+	var value := path.strip_edges()
+	var home := OS.get_environment("HOME")
+	if value == "~":
+		value = home
+	elif value.begins_with("~/"):
+		value = home.path_join(value.substr(2))
+	return value
+
+
+func _on_map_dir_changed(_path: String) -> void:
+	_menu.config.save_to(SETTINGS_PATH)
+	_rebuild_catalog()
+	_menu.refresh()
 
 
 func _setup_audio() -> void:
@@ -148,7 +190,10 @@ func _load_map(advance: bool) -> void:
 
 
 func _try_load_map(map_name: String) -> bool:
-	var text := FileAccess.get_file_as_string("%s/%s" % [MAP_DIR, map_name])
+	var path := _catalog.file_path(map_name)
+	if path.is_empty() or not FileAccess.file_exists(path):
+		path = "%s/%s" % [MAP_DIR, map_name]
+	var text := FileAccess.get_file_as_string(path)
 	var data := MapParser.parse(text, _rng)
 	if not data.is_valid():
 		return false
@@ -159,10 +204,13 @@ func _try_load_map(map_name: String) -> bool:
 			return false
 	_world = SimWorld.new(SimBoard.from_map(data), _rng)
 	_world.round_time_ms = config.round_time_ms()
+	_hurry_threshold_ms = mini(HURRY_LIMIT_MS, maxi(3000, _world.round_time_ms - 5000))
 	_ais.clear()
+	var starts := data.start_cells(active, config.random_positions, _rng)
 	for slot in active:
 		var team := config.effective_team(slot)
-		_world.add_player(slot + 1, data.starts[slot], team)
+		var start: Vector2i = starts[slot]
+		_world.add_player(slot + 1, start, team)
 		_match.set_team(slot + 1, team)
 		if config.slots[slot] == GameConfig.Controller.AI:
 			_ais[slot + 1] = SimAI.new(slot + 1)
@@ -170,14 +218,31 @@ func _try_load_map(map_name: String) -> bool:
 	_current_map = map_name
 	_connect_sounds()
 	view3d.bind(_world)
+	view3d.play_intro(INTRO_DURATION_S)
+	_intro = true
 	_round_over = false
+	_hurry_started = false
+	_hurry_beep_at = 0
+	banner.modulate = Color.WHITE
 	banner.text = "%s  (von %s)       [Esc] Menü  |  [M] Musik  |  [F4] SFX  |  [R] Reset" % [map_name.get_basename(), data.author]
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	banner.anchor_left = 0.0
+	banner.anchor_right = 1.0
+	banner.offset_left = 8.0
+	banner.offset_right = -8.0
+	_update_countdown()
 	return true
 
 
 func _physics_process(delta: float) -> void:
 	if _world == null or _scoreboard.visible or _menu.visible:
 		return
+	if _intro:
+		if view3d.is_intro_running():
+			_update_countdown()
+			return
+		_intro = false
+		sfx.play("land")
 	_apply_human_input()
 	_clock_ms += delta * 1000.0
 	var whole := int(_clock_ms)
@@ -185,8 +250,9 @@ func _physics_process(delta: float) -> void:
 	for ai: SimAI in _ais.values():
 		ai.update(_world, whole)
 	_world.tick(whole)
+	_update_hurry()
+	_update_countdown()
 	_check_round_end()
-	hud.text = _status_text()
 
 
 func _input(event: InputEvent) -> void:
@@ -227,7 +293,7 @@ func _input(event: InputEvent) -> void:
 		_handle_scoreboard_input(event)
 		return
 
-	if _menu.visible or _world == null:
+	if _menu.visible or _world == null or _intro:
 		return
 
 	if event is InputEventKey:
@@ -347,7 +413,7 @@ func _apply_human_input() -> void:
 				direction = _axis(KEY_A, KEY_D, KEY_W, KEY_S)
 			GameConfig.Controller.KEYBOARD_2:
 				direction = _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN)
-			GameConfig.Controller.PAD_1, GameConfig.Controller.PAD_2, GameConfig.Controller.PAD_3, GameConfig.Controller.PAD_4:
+			GameConfig.Controller.PAD_1, GameConfig.Controller.PAD_2, GameConfig.Controller.PAD_3, GameConfig.Controller.PAD_4, GameConfig.Controller.PAD_5, GameConfig.Controller.PAD_6, GameConfig.Controller.PAD_7, GameConfig.Controller.PAD_8:
 				direction = _pad_axis(config.pad_device(slot))
 			_:
 				continue
@@ -399,25 +465,65 @@ func _connect_sounds() -> void:
 	_world.tile_vanishing.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -3.0))
 
 
-# Kurzstatus je Spieler: Bomben, Power, Skateboards, Kick/Glove, Krankheit.
-func _status_text() -> String:
-	var lines: Array[String] = []
-	for id: int in _world.players:
-		var p: SimPlayer = _world.players[id]
-		var line := "%s ★%d  B%d P%d S%d%s%s" % [_player_name(id).left(8), _match.points_of(id), p.max_bombs, p.power, p.skateboards, " K" if p.can_kick else "", " G" if p.can_glove else ""]
-		if p.is_diseased():
-			line += " [%s %ds]" % [ArenaView3D.EXTRA_LETTERS[p.disease], ceili(p.disease_ms / 1000.0)]
-		if not p.alive:
-			line += "  tot"
-		lines.append(line)
-	var clock := "SUDDEN DEATH" if _world.is_sudden_death() else "%d s" % ceili(_world.round_time_ms / 1000.0)
-	return clock + "    " + "    ".join(lines)
+func _update_hurry() -> void:
+	if _round_over:
+		return
+	if _world.is_sudden_death():
+		if _hurry_started:
+			_hurry_started = false
+			banner.modulate = Color.WHITE
+		return
+	if _world.round_time_ms > _hurry_threshold_ms:
+		return
+	if not _hurry_started:
+		_hurry_started = true
+	banner.text = "HURRY UP!"
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.anchor_left = 0.0
+	banner.anchor_right = 1.0
+	banner.offset_left = 0.0
+	banner.offset_right = 0.0
+	_hurry_beep_at = 0
+	if Time.get_ticks_msec() >= _hurry_beep_at:
+		_hurry_beep_at = Time.get_ticks_msec() + HURRY_BEEP_INTERVAL_MS
+		sfx.play("ui_select", -6.0)
+	var blink := 0.45 + 0.55 * absf(sin(Time.get_ticks_msec() / 180.0))
+	banner.modulate = Color(1.0, 0.85, 0.3, blink)
+
+
+func _update_countdown() -> void:
+	if _world == null or _round_over or _hurry_started:
+		return
+	if _world.is_sudden_death():
+		banner.text = "SUDDEN DEATH"
+		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		banner.anchor_left = 1.0
+		banner.anchor_right = 1.0
+		banner.offset_left = -200.0
+		banner.offset_right = -8.0
+		banner.modulate = Color.WHITE
+		return
+	banner.text = "%d s" % ceili(_world.round_time_ms / 1000.0)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	banner.anchor_left = 1.0
+	banner.anchor_right = 1.0
+	banner.offset_left = -200.0
+	banner.offset_right = -8.0
+	banner.modulate = Color.WHITE
 
 
 func _check_round_end() -> void:
 	if _round_over or not _match.update(_world):
 		return
 	_round_over = true
+	_hurry_started = false
+	banner.modulate = Color.WHITE
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	banner.anchor_left = 0.0
+	banner.anchor_right = 1.0
+	banner.offset_left = 8.0
+	banner.offset_right = -8.0
+	banner.text = ""
 	_continue_unlock_at = Time.get_ticks_msec() + CONTINUE_LOCK_MS
 	sfx.play("round_end")
 	_scoreboard.show_result(_match, _names())

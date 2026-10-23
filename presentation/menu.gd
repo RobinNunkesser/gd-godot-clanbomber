@@ -7,11 +7,13 @@ extends PanelContainer
 signal start_requested
 signal resume_requested
 signal audio_changed
+signal map_dir_changed(path: String)
 signal quit_requested
 
 enum Mode { MAIN, HELP, PLAYERS, MAPS }
 
 const VISIBLE_MAP_ROWS := 12
+const VISIBLE_PLAYER_ROWS := 12
 
 
 # Kleine Kartenvorschau neben der Kartenliste (wie im Original): Kacheln und Startplätze.
@@ -63,7 +65,10 @@ var _mode := Mode.MAIN
 var _row := 0
 var _return_row := 0
 var _map_scroll := 0
+var _player_first_slot := 0
 var _editing := false
+var _edit_kind := "name"
+var _edit_slot := 0
 var _edit_text := ""
 var _text := RichTextLabel.new()
 var _preview := MapPreview.new()
@@ -138,7 +143,9 @@ func _main_rows() -> Array[Dictionary]:
 	rows.append({"id": "pool", "label": "Karten wählen …",
 		"value": "%d von %d Karten" % [config.effective_pool(playable).size(), playable.size()], "adjustable": false})
 	rows.append({"id": "order", "label": "Reihenfolge", "value": config.order_label(), "adjustable": true})
-	rows.append({"id": "points", "label": "Punkte zum Sieg", "value": str(config.points_to_win), "adjustable": true, "gap": true})
+	rows.append({"id": "positions", "label": "Startpositionen", "value": config.random_positions_label(), "adjustable": true})
+	rows.append({"id": "mapdir", "label": "Externe Karten", "value": _external_dir_label(), "adjustable": false, "gap": true})
+	rows.append({"id": "points", "label": "Punkte zum Sieg", "value": str(config.points_to_win), "adjustable": true})
 	rows.append({"id": "time", "label": "Sudden Death nach", "value": "%d s" % config.round_time_s, "adjustable": true})
 	rows.append({"id": "music", "label": "Musik", "value": config.music_label(), "adjustable": true, "gap": true})
 	rows.append({"id": "sfx", "label": "Ton-Effekte", "value": config.sfx_label(), "adjustable": true})
@@ -167,6 +174,16 @@ func _row_index(id: String) -> int:
 func _row_id() -> String:
 	var rows := _main_rows()
 	return rows[clampi(_row, 0, rows.size() - 1)].id
+
+
+func _external_dir_label() -> String:
+	if _editing and _edit_kind == "mapdir":
+		return "[color=#ffdd44]%s█[/color]" % _edit_text
+	return config.external_map_dir if not config.external_map_dir.is_empty() else "Standard"
+
+
+func refresh() -> void:
+	_render()
 
 
 func _row_count() -> int:
@@ -254,13 +271,18 @@ func _handle_edit_input(event: InputEvent) -> bool:
 	if code == KEY_ENTER or code == KEY_KP_ENTER:
 		if key.echo:
 			return false
-		config.set_name(floori(_row / 2.0), _edit_text)
+		if _edit_kind == "mapdir":
+			config.external_map_dir = _edit_text.strip_edges()
+			map_dir_changed.emit(config.external_map_dir)
+		else:
+			config.set_name(_edit_slot, _edit_text)
 		_editing = false
 	elif code == KEY_BACKSPACE:
 		_edit_text = _edit_text.left(_edit_text.length() - 1)
 	elif key.unicode >= 32 and key.unicode != 127:
 		var typed := char(key.unicode)
-		if typed != "[" and typed != "]" and _edit_text.length() < GameConfig.NAME_MAX_LENGTH:
+		var limit := 240 if _edit_kind == "mapdir" else GameConfig.NAME_MAX_LENGTH
+		if typed != "[" and typed != "]" and _edit_text.length() < limit:
 			_edit_text += typed
 	else:
 		return false
@@ -279,6 +301,8 @@ func _change(step: int) -> void:
 		config.cycle_slot(id.trim_prefix("slot").to_int(), step)
 	elif id == "order":
 		config.random_order = not config.random_order
+	elif id == "positions":
+		config.toggle_random_positions()
 	elif id == "points":
 		config.cycle_points(step)
 	elif id == "time":
@@ -295,8 +319,7 @@ func _accept() -> void:
 	match _mode:
 		Mode.PLAYERS:
 			if _row % 2 == 0:
-				_editing = true
-				_edit_text = config.names[floori(_row / 2.0)]
+				_begin_edit("name", config.names[floori(_row / 2.0)], floori(_row / 2.0))
 			else:
 				_change(1)
 		Mode.MAPS:
@@ -320,9 +343,12 @@ func _accept_main_row() -> void:
 			quit_requested.emit()
 		"players":
 			_enter_submenu(Mode.PLAYERS)
+			_player_first_slot = 0
 		"pool":
 			_enter_submenu(Mode.MAPS)
 			_map_scroll = 0
+		"mapdir":
+			_begin_edit("mapdir", config.external_map_dir)
 		_:
 			_change(1)
 
@@ -331,6 +357,13 @@ func _enter_submenu(mode: Mode) -> void:
 	_return_row = _row
 	_mode = mode
 	_row = 0
+
+
+func _begin_edit(kind: String, text: String, slot := 0) -> void:
+	_edit_kind = kind
+	_edit_slot = slot
+	_editing = true
+	_edit_text = text
 
 
 # Leertaste / Enter / Gamepad A schaltet die Karte unter dem Cursor an oder aus.
@@ -364,18 +397,30 @@ func _render_main() -> void:
 			lines.append("")
 		lines.append(_row_line(i, row.label, row.value, row.adjustable))
 	lines.append("")
-	lines.append("[center][color=#aaaaaa]↑↓ wählen, ←→ ändern, Enter / Leertaste / Gamepad A bestätigen[/color][/center]")
+	var hint := "Pfad eingeben, Enter bestätigt, Esc bricht ab" if _editing and _edit_kind == "mapdir" else \
+		"↑↓ wählen, ←→ ändern, Enter / Leertaste / Gamepad A bestätigen"
+	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)
 	_text.text = "\n".join(lines)
 
 
 func _render_players() -> void:
 	var lines: Array[String] = ["[center][b]Namen & Teams[/b][/center]", ""]
-	for slot in GameConfig.SLOT_COUNT:
+	var visible_slots := floori(VISIBLE_PLAYER_ROWS / 2.0)
+	var current_slot := floori(_row / 2.0)
+	if current_slot < _player_first_slot:
+		_player_first_slot = current_slot
+	elif current_slot >= _player_first_slot + visible_slots:
+		_player_first_slot = current_slot - visible_slots + 1
+	var first_slot := _player_first_slot
+	var last_slot := mini(first_slot + visible_slots, GameConfig.SLOT_COUNT)
+	if first_slot > 0:
+		lines.append("[color=#888888]↑ weitere Spieler[/color]")
+	for slot in range(first_slot, last_slot):
 		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
 		lines.append("[color=#%s][b]Platz %d[/b][/color]  [color=#888888](%s)[/color]" % [
 			color.to_html(false), slot + 1, GameConfig.NAMES[config.slots[slot]]])
 		var name_text := config.name_of(slot)
-		if _editing and floori(_row / 2.0) == slot:
+		if _editing and _edit_kind == "name" and _edit_slot == slot:
 			name_text = "[color=#ffdd44]%s█[/color]" % _edit_text
 		lines.append(_row_line(slot * 2, "Name", name_text, false))
 		var team := config.teams[slot]
@@ -385,6 +430,8 @@ func _render_players() -> void:
 			if config.slots[slot] != GameConfig.Controller.OFF and config.effective_team(slot) == 0:
 				team_text += " [color=#888888](allein, zählt als Einzelspieler)[/color]"
 		lines.append(_row_line(slot * 2 + 1, "Team", team_text, true))
+	if last_slot < GameConfig.SLOT_COUNT:
+		lines.append("[color=#888888]↓ weitere Spieler[/color]")
 	lines.append("")
 	var hint := "Name tippen, Enter bestätigt, Esc bricht ab" if _editing else \
 		"Enter: Name ändern, ←→: Team wechseln, Esc / B: zurück"
@@ -434,7 +481,7 @@ func _render_help() -> void:
 		"",
 		"[color=#ffdd44][b]Spieler 1 (Tastatur):[/b][/color]   [b]W, A, S, D[/b] = Laufen  |  [b]Leertaste[/b] = Bombe legen",
 		"[color=#44ddff][b]Spieler 2 (Tastatur):[/b][/color]   [b]Pfeiltasten[/b] = Laufen  |  [b]Enter[/b] = Bombe legen",
-		"[color=#66ff66][b]Gamepad (1–4):[/b][/color]         [b]D-Pad / Stick[/b] = Laufen  |  [b]A-Taste[/b] = Bombe legen",
+		"[color=#66ff66][b]Gamepad (1–8):[/b][/color]         [b]D-Pad / Stick[/b] = Laufen  |  [b]A-Taste[/b] = Bombe legen",
 		"",
 		"[color=#ffaaee][b]Kurzbefehle im Spiel:[/b][/color]",
 		"  [b]Esc[/b]        Menü aufrufen / Weiterspielen (bzw. Beenden)",
@@ -447,6 +494,9 @@ func _render_help() -> void:
 		"[color=#ffaaee][b]Karten & Teams:[/b][/color]",
 		"  Unter [b]Karten wählen[/b] wählst du die Karten des Matches; nach jeder Runde folgt die nächste Karte,",
 		"  [b]Reihenfolge[/b] legt fest, ob zufällig (jede Karte einmal pro Durchgang) oder der Reihe nach gespielt wird.",
+		"  [b]Startpositionen[/b] verteilt die Startfelder zufällig auf die aktiven Spieler (wie im Original).",
+		"  [b]Externe Karten[/b]: zusätzlichen Ordner mit .map-Dateien eintragen; er wird beim Start mitgeladen.",
+		"  Alternativ beim Start CLANBOMBER_MAPS_DIR setzen; user://maps wird immer mitgelesen.",
 		"  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.",
 		"",
 		"[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center]"
@@ -464,7 +514,7 @@ func _row_line(row: int, label: String, value: String, adjustable: bool) -> Stri
 
 func _value_text(controller: int, pads: Array[int]) -> String:
 	var text: String = GameConfig.NAMES[controller]
-	if controller >= GameConfig.Controller.PAD_1 and controller <= GameConfig.Controller.PAD_4:
+	if controller >= GameConfig.Controller.PAD_1 and controller <= GameConfig.Controller.PAD_8:
 		if not pads.has(controller - GameConfig.Controller.PAD_1):
 			text += " (nicht verbunden)"
 	return text
