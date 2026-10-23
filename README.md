@@ -61,7 +61,7 @@ Extras werden durch Betreten aufgenommen. Kennbuchstaben: Kreis = Extra, Quadrat
 | K | Kick | | | |
 | G | Glove | | | |
 
-Unter der Arena steht je Spieler `B` Bomben, `P` Power, `S` Skateboards, `K`/`G` falls vorhanden und die aktive Krankheit mit Restsekunden; bei acht Spielern werden die Zeilen umbrochen. Vor jeder Runde fliegen die Bomber zur Startposition (Steuerung gesperrt), bei 20 s Restzeit erscheint „HURRY UP!“ mit Signalton. Kranke Spieler tragen einen farbigen Rahmen mit dem Buchstaben. Musik und Effekte laufen über eigene Audio-Busse.
+Vor jeder Runde fliegen die Bomber zur Startposition (Steuerung gesperrt), bei 20 s Restzeit erscheint „HURRY UP!“ mit Signalton. Kranke Spieler tragen einen farbigen Rahmen mit dem Buchstaben. Musik und Effekte laufen über eigene Audio-Busse.
 
 ## Tests
 
@@ -81,7 +81,7 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 ## Karten
 
-`maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). Die Autorenangaben im Dateikopf lauten auf *Robin Nunkesser* (23 Karten), *anonymous hendrik* (13 Karten) und *cjl* (1 Karte) – alle vom Repo-Eigentümer erstellt.
+`maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). 
 
 Zur Laufzeit werden zusätzlich `user://maps`, der im Menü unter **Externe Karten** eingetragene Ordner und die Umgebungsvariable `CLANBOMBER_MAPS_DIR` gelesen. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos; bei Namenskonflikten gewinnt `res://maps`.
 
