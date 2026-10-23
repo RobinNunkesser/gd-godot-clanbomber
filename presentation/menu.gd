@@ -13,7 +13,7 @@ signal quit_requested
 enum Mode { MAIN, HELP, PLAYERS, MAPS, MATCH, SETTINGS }
 
 const VISIBLE_MAP_ROWS := 12
-const VISIBLE_PLAYER_ROWS := 12
+const VISIBLE_PLAYER_SLOTS := 4
 const LANGS := ["de", "en"]
 
 var _lang_index := 0
@@ -207,7 +207,7 @@ func refresh() -> void:
 func _row_count() -> int:
 	match _mode:
 		Mode.PLAYERS:
-			return GameConfig.SLOT_COUNT * 2
+			return GameConfig.SLOT_COUNT * 3
 		Mode.MAPS:
 			return catalog.names.size()
 		Mode.MATCH:
@@ -313,8 +313,12 @@ func _handle_edit_input(event: InputEvent) -> bool:
 
 func _change(step: int) -> void:
 	if _mode == Mode.PLAYERS:
-		if _row % 2 == 1:
-			config.cycle_team(floori(_row / 2.0), step)
+		var slot := floori(_row / 3.0)
+		match _row % 3:
+			0:
+				config.cycle_slot(slot, step)
+			2:
+				config.cycle_team(slot, step)
 		return
 	if _mode == Mode.MATCH:
 		match _row:
@@ -339,34 +343,19 @@ func _change(step: int) -> void:
 				_lang_index = posmod(_lang_index + step, LANGS.size())
 				I18n.set_lang_index(_lang_index)
 		return
-	if _mode != Mode.MAIN:
-		return
-	var id := _row_id()
-	if id.begins_with("slot"):
-		config.cycle_slot(id.trim_prefix("slot").to_int(), step)
-	elif id == "order":
-		config.random_order = not config.random_order
-	elif id == "positions":
-		config.toggle_random_positions()
-	elif id == "points":
-		config.cycle_points(step)
-	elif id == "time":
-		config.cycle_round_time(step)
-	elif id == "music":
-		config.cycle_music(step)
-		audio_changed.emit()
-	elif id == "sfx":
-		config.cycle_sfx(step)
-		audio_changed.emit()
 
 
 func _accept() -> void:
 	match _mode:
 		Mode.PLAYERS:
-			if _row % 2 == 0:
-				_begin_edit("name", config.names[floori(_row / 2.0)], floori(_row / 2.0))
-			else:
-				_change(1)
+			var slot := floori(_row / 3.0)
+			match _row % 3:
+				0:
+					_change(1)
+				1:
+					_begin_edit("name", config.names[slot], slot)
+				2:
+					_change(1)
 		Mode.MAPS:
 			_accept_map_row()
 		Mode.SETTINGS:
@@ -462,31 +451,33 @@ func _render_main() -> void:
 
 func _render_players() -> void:
 	var lines: Array[String] = ["[center][b]%s[/b][/center]" % I18n.text("MENU_PLAYERS_TITLE"), ""]
-	var visible_slots := floori(VISIBLE_PLAYER_ROWS / 2.0)
-	var current_slot := floori(_row / 2.0)
+	var current_slot := floori(_row / 3.0)
 	if current_slot < _player_first_slot:
 		_player_first_slot = current_slot
-	elif current_slot >= _player_first_slot + visible_slots:
-		_player_first_slot = current_slot - visible_slots + 1
+	elif current_slot >= _player_first_slot + VISIBLE_PLAYER_SLOTS:
+		_player_first_slot = current_slot - VISIBLE_PLAYER_SLOTS + 1
 	var first_slot := _player_first_slot
-	var last_slot := mini(first_slot + visible_slots, GameConfig.SLOT_COUNT)
+	var last_slot := mini(first_slot + VISIBLE_PLAYER_SLOTS, GameConfig.SLOT_COUNT)
 	if first_slot > 0:
 		lines.append("[color=#888888]%s[/color]" % I18n.text("MENU_UP_MORE_PLAYERS"))
+	var pads := Input.get_connected_joypads()
 	for slot in range(first_slot, last_slot):
 		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
-		lines.append("[color=#%s][b]%s %d[/b][/color]  [color=#888888](%s)[/color]" % [
-			color.to_html(false), I18n.text("MENU_PLACE"), slot + 1, _controller_label(config.slots[slot])])
+		lines.append("[color=#%s][b]%s %d[/b][/color]" % [
+			color.to_html(false), I18n.text("MENU_PLACE"), slot + 1])
+		var ctrl_text := _value_text(config.slots[slot], pads)
+		lines.append(_row_line(slot * 3, I18n.text("MENU_CONTROLLER"), ctrl_text, true))
 		var name_text := config.name_of(slot)
 		if _editing and _edit_kind == "name" and _edit_slot == slot:
 			name_text = "[color=#ffdd44]%s█[/color]" % _edit_text
-		lines.append(_row_line(slot * 2, I18n.text("MENU_NAME"), name_text, false))
+		lines.append(_row_line(slot * 3 + 1, I18n.text("MENU_NAME"), name_text, false))
 		var team := config.teams[slot]
 		var team_text := _team_text(team)
 		if team > 0:
 			team_text = "[color=#%s]%s[/color]" % [GameConfig.TEAM_COLORS[team - 1].to_html(false), team_text]
 			if config.slots[slot] != GameConfig.Controller.OFF and config.effective_team(slot) == 0:
 				team_text += " [color=#888888]%s[/color]" % I18n.text("MENU_ALONE_COUNTS_AS_SINGLE")
-		lines.append(_row_line(slot * 2 + 1, I18n.text("MENU_TEAM"), team_text, true))
+		lines.append(_row_line(slot * 3 + 2, I18n.text("MENU_TEAM"), team_text, true))
 	if last_slot < GameConfig.SLOT_COUNT:
 		lines.append("[color=#888888]%s[/color]" % I18n.text("MENU_DOWN_MORE_PLAYERS"))
 	lines.append("")
@@ -609,6 +600,8 @@ func _controller_label(controller: int) -> String:
 			return I18n.text("CTRL_KEYBOARD_1")
 		GameConfig.Controller.KEYBOARD_2:
 			return I18n.text("CTRL_KEYBOARD_2")
+		GameConfig.Controller.AI:
+			return "AI"
 		_:
 			if controller >= GameConfig.Controller.PAD_1 and controller <= GameConfig.Controller.PAD_8:
 				return I18n.text("CTRL_PAD") % (controller - GameConfig.Controller.PAD_1 + 1)

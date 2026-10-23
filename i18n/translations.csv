@@ -11,6 +11,7 @@ MENU_QUIT,Spiel beenden,Quit Game
 MENU_BLOCKER_MIN_OPPONENTS,mindestens 2 Gegner nötig,at least 2 opponents needed
 MENU_BLOCKER_NO_MAP,keine Karte für diese Spielerplätze,no map for these player slots
 MENU_PLAYERS_TITLE,Spieler & Teams,Players & Teams
+MENU_CONTROLLER,Steuerung,Controller
 MENU_NAME,Name,Name
 MENU_TEAM,Team,Team
 MENU_ALONE_AS_SINGLE,"(allein, zählt als Einzelspieler)","(alone, counts as single player)"
@@ -39,7 +40,7 @@ MENU_MAP_SHORTCUTS,Leertaste / Enter / A: Karte an/aus,Space / Enter / A: toggle
 MENU_MAP_SHORTCUTS2,A: alle Karten · S: nur diese Karte (Gamepad X / Y),A: all maps · S: only this map (Gamepad X / Y)
 MENU_BACK,Esc / B: zurück,Esc / B: back
 MENU_NAME_HINT,"Name tippen, Enter bestätigt, Esc bricht ab","Type name, Enter confirms, Esc cancels"
-MENU_NAME_TEAM_HINT,"Enter: Name ändern, ←→: Team wechseln, Esc / B: zurück","Enter: change name, ←→: change team, Esc / B: back"
+MENU_NAME_TEAM_HINT,"←→ / Enter: Steuerung & Team ändern · Enter auf Name: bearbeiten · Esc / B: zurück","←→ / Enter: change controller & team · Enter on name: edit · Esc / B: back"
 MENU_PATH_HINT,"Pfad eingeben, Enter bestätigt, Esc bricht ab","Type path, Enter confirms, Esc cancels"
 MENU_NAV_HINT,"↑↓ wählen, ←→ ändern, Enter / Leertaste / Gamepad A bestätigen","↑↓ select, ←→ change, Enter / Space / Gamepad A confirm"
 MENU_NAV_HINT_EDIT,"Pfad eingeben, Enter bestätigt, Esc bricht ab","Type path, Enter confirms, Esc cancels"
