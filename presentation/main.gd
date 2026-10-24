@@ -601,6 +601,14 @@ func _check_round_end() -> void:
 	banner.text = ""
 	_continue_unlock_at = Time.get_ticks_msec() + CONTINUE_LOCK_MS
 	sfx.play("round_end")
+
+	if not _match.last_winners.is_empty() and view3d != null and view3d.effects != null:
+		for wid: int in _match.last_winners:
+			var wpos := view3d.player_world_pos(wid)
+			if wpos != Vector3.ZERO:
+				view3d.effects.confetti(wpos)
+		view3d.effects.hitstop(0.55, 0.35)
+
 	_scoreboard.show_result(_match, _names())
 
 

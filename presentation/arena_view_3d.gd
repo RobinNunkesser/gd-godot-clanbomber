@@ -45,6 +45,16 @@ const EXTRA_LETTERS := {
 	SimExtra.Type.KICK: "K", SimExtra.Type.GLOVE: "G",
 	SimExtra.Type.OVERDRIVE: "O", SimExtra.Type.REVERSE: "R", SimExtra.Type.AUTOBOMB: "A",
 }
+const EXTRA_I18N_KEYS := {
+	SimExtra.Type.POWER: "PICKUP_POWER",
+	SimExtra.Type.BOMB: "PICKUP_BOMB",
+	SimExtra.Type.SKATEBOARD: "PICKUP_SKATE",
+	SimExtra.Type.KICK: "PICKUP_KICK",
+	SimExtra.Type.GLOVE: "PICKUP_GLOVE",
+	SimExtra.Type.OVERDRIVE: "PICKUP_OVERDRIVE",
+	SimExtra.Type.REVERSE: "PICKUP_REVERSE",
+	SimExtra.Type.AUTOBOMB: "PICKUP_AUTOBOMB",
+}
 
 const DISEASES: Array[int] = [SimExtra.Type.OVERDRIVE, SimExtra.Type.REVERSE, SimExtra.Type.AUTOBOMB]
 
@@ -59,6 +69,7 @@ var _bombs: Dictionary = {}
 var _extras: Dictionary = {}
 var _flames: Dictionary = {}
 var _players: Dictionary = {}
+var _walk_phase: Dictionary = {}
 var _time := 0.0
 var _intro_active := false
 var _intro_elapsed := 0.0
@@ -72,6 +83,12 @@ var _effects := Effects3D.new()
 
 var effects: Effects3D:
 	get: return _effects
+
+
+func player_world_pos(player_id: int) -> Vector3:
+	if world != null and world.players.has(player_id):
+		return _world_pos(Vector2(world.players[player_id].pos))
+	return Vector3.ZERO
 
 
 func _ready() -> void:
@@ -126,6 +143,7 @@ func _setup_environment() -> void:
 
 func bind(p_world: SimWorld) -> void:
 	world = p_world
+	_walk_phase.clear()
 	_connect_effects()
 	for node in [_static_root]:
 		if node != null:
@@ -157,10 +175,80 @@ func _connect_effects() -> void:
 	world.extra_collected.connect(func(id: int, type: int) -> void:
 		var player: SimPlayer = world.players[id]
 		var color: Color = EXTRA_COLORS.get(type, Color.WHITE)
-		_effects.pickup(_world_pos(Vector2(player.pos)), color))
+		var ppos := _world_pos(Vector2(player.pos))
+		_effects.pickup(ppos, color)
+		var key: String = EXTRA_I18N_KEYS.get(type, "")
+		if not key.is_empty():
+			var txt := I18n.text(key)
+			var text_color: Color = Color("e040fb") if type in DISEASES else color.lightened(0.25)
+			_effects.pickup_text(ppos, txt, text_color)
+	)
 	world.player_died.connect(func(id: int, _k: int) -> void:
 		var player: SimPlayer = world.players[id]
-		_effects.death(_world_pos(Vector2(player.pos)), PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()]))
+		_effects.death(_world_pos(Vector2(player.pos)), PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()])
+		_play_death_animation(id)
+	)
+	world.bomb_kicked.connect(func(b: SimBomb) -> void:
+		var pid := _nearest_player_id(b.cell)
+		_trigger_player_action(pid, "attack-kick-right")
+	)
+	world.bomb_thrown.connect(func(b: SimBomb) -> void:
+		var pid := _nearest_player_id(b.cell)
+		_trigger_player_action(pid, "holding-both")
+	)
+
+
+func _nearest_player_id(cell: Vector2i) -> int:
+	if world == null:
+		return -1
+	var best_dist := 9999.0
+	var best_id := -1
+	for id: int in world.players:
+		var p: SimPlayer = world.players[id]
+		if not p.alive:
+			continue
+		var dist := cell.distance_to(p.cell)
+		if dist < best_dist:
+			best_dist = dist
+			best_id = id
+	return best_id
+
+
+func _trigger_player_action(id: int, anim_name: String) -> void:
+	if not _players.has(id):
+		return
+	var node: Node3D = _players[id]
+	var anims := _animation_player(node)
+	if anims != null and anims.has_animation(anim_name):
+		anims.play(anim_name)
+		anims.queue("idle")
+	var model: Node3D = node.get_node_or_null("Model")
+	if model != null:
+		var tween := create_tween()
+		tween.tween_property(model, "position:y", 0.12, 0.08).set_trans(Tween.TRANS_QUAD)
+		tween.tween_property(model, "position:y", 0.0, 0.08)
+
+
+func _play_death_animation(id: int) -> void:
+	if not _players.has(id):
+		return
+	var node: Node3D = _players[id]
+	var model: Node3D = node.get_node_or_null("Model")
+	var tag: Node3D = node.get_node_or_null("Tag")
+	if tag != null:
+		tag.visible = false
+	if model == null:
+		return
+	var anims := _animation_player(node)
+	if anims != null and anims.has_animation("die"):
+		anims.play("die")
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(model, "rotation:y", model.rotation.y + TAU * 2.0, 0.45)
+	tween.tween_property(node, "position:y", node.position.y + 0.9, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", Vector3.ZERO, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(func() -> void:
+		node.visible = false
+	)
 
 
 func _nearest_player_cell(origin: Vector2i) -> Vector2i:
@@ -342,7 +430,7 @@ func _process(delta: float) -> void:
 	_sync_bombs()
 	_sync_extras()
 	_sync_flames()
-	_sync_players()
+	_sync_players(delta)
 
 
 func _sync_observer() -> void:
@@ -424,80 +512,78 @@ func _sync_extras() -> void:
 			_extras[cell] = _make_extra(cell, world.extras[cell])
 		var node: Node3D = _extras[cell]
 		var phase: float = _time * 3.2 + float(cell.x * 2 + cell.y)
-		# Sanftes Schweben
-		node.position.y = 0.20 + 0.035 * sin(phase)
+		node.position.y = 0.28 + 0.05 * sin(phase)
 
-		# Flache Drehung + feines Trudeln (Wobble), damit die Münze das Studio-Licht reflektiert
-		var spinner: Node3D = node.get_meta("spinner")
-		spinner.rotation.x = sin(phase * 1.3) * 0.10
-		spinner.rotation.y = cos(phase * 1.3) * 0.10
-		spinner.rotation.z = _time * 0.5 # Flache Drehung um die eigene Flächennormale
-		var s: float = 1.0 + 0.04 * sin(phase * 1.5)
-		spinner.scale = Vector3(s, s, s)
+		var sprite: Node3D = node.get_node_or_null("Sprite")
+		if sprite != null:
+			var s: float = 1.0 + 0.06 * sin(phase * 1.6)
+			sprite.scale = Vector3(s, s, s)
 
-		# Pulsierendes Bodenlicht
 		if node.has_meta("light"):
 			var l: OmniLight3D = node.get_meta("light")
-			l.light_energy = 0.55 + 0.25 * sin(phase * 2.0)
+			l.light_energy = 0.65 + 0.30 * sin(phase * 2.0)
 
 
 func _make_extra(cell: Vector2i, type: int) -> Node3D:
 	var root := Node3D.new()
 	root.set_meta("type", type)
-	root.position = Vector3(cell.x + 0.5, 0.20, cell.y + 0.5)
-
-	var pivot := Node3D.new()
-	# Exakt zur 78°-Topdown-Kamera geneigt: Münzfläche bleibt immer voll sichtbar
-	pivot.rotation.x = -deg_to_rad(78.0)
-	root.add_child(pivot)
-
-	var spinner := Node3D.new()
-	pivot.add_child(spinner)
-	root.set_meta("spinner", spinner)
+	root.position = Vector3(cell.x + 0.5, 0.28, cell.y + 0.5)
 
 	var color: Color = EXTRA_COLORS.get(type, Color("ffd54f"))
+	var is_disease := type in DISEASES
 
 	var tex_path: String = EXTRA_TEXTURES.get(type, "")
 	if tex_path != "" and ResourceLoader.exists(tex_path):
 		var sprite := Sprite3D.new()
+		sprite.name = "Sprite"
 		sprite.texture = load(tex_path)
-		sprite.pixel_size = 0.00075 # ca. 0.77m Durchmesser bei 1024px
-		sprite.double_sided = true
+		sprite.pixel_size = 0.00078
+		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		spinner.add_child(sprite)
-
-		# 3D Metallic-Fassung (Ring) um den Token
-		var ring := MeshInstance3D.new()
-		var torus := TorusMesh.new()
-		torus.inner_radius = 0.35
-		torus.outer_radius = 0.39
-		torus.rings = 24
-		torus.ring_segments = 12
-		ring.mesh = torus
-		ring.rotation.x = PI / 2.0
-		var ring_mat := StandardMaterial3D.new()
-		ring_mat.albedo_color = color
-		ring_mat.metallic = 0.85
-		ring_mat.roughness = 0.25
-		ring.material_override = ring_mat
-		spinner.add_child(ring)
+		root.add_child(sprite)
 	else:
 		var model: Node3D = load(EXTRA_MODELS.get(type, "res://assets/models/mini-dungeon/potion.glb")).instantiate()
-		spinner.add_child(model)
-		_fit_model(model, 1.0)
-		if type in DISEASES:
+		model.name = "Sprite"
+		root.add_child(model)
+		_fit_model(model, 0.9)
+		if is_disease:
 			var tint := _material(color)
 			for mi in model.find_children("*", "MeshInstance3D", true, false):
 				(mi as MeshInstance3D).material_override = tint
 
-	# Zartes Bodenlicht in der Farbe des Extras für Aufmerksamkeit
+	var disc := MeshInstance3D.new()
+	var disc_mesh := CylinderMesh.new()
+	disc_mesh.top_radius = 0.36
+	disc_mesh.bottom_radius = 0.36
+	disc_mesh.height = 0.01
+	disc.mesh = disc_mesh
+	var disc_color: Color = Color("9c27b0") if is_disease else color
+	disc.material_override = _glow_material(disc_color)
+	disc.position = Vector3(0, -0.25, 0)
+	root.add_child(disc)
+
 	var light := OmniLight3D.new()
-	light.light_color = color
-	light.omni_range = 1.2
-	light.light_energy = 0.6
-	light.position = Vector3(0, 0.05, 0)
+	light.light_color = disc_color
+	light.omni_range = 1.3
+	light.light_energy = 0.8
+	light.position = Vector3(0, -0.1, 0)
 	root.add_child(light)
 	root.set_meta("light", light)
+
+	if is_disease:
+		var fumes := CPUParticles3D.new()
+		fumes.amount = 5
+		fumes.lifetime = 0.75
+		fumes.direction = Vector3.UP
+		fumes.spread = 35.0
+		fumes.initial_velocity_min = 0.3
+		fumes.initial_velocity_max = 0.6
+		fumes.gravity = Vector3(0, 0.4, 0)
+		var pmesh := BoxMesh.new()
+		pmesh.size = Vector3.ONE * 0.05
+		pmesh.material = _glow_material(Color("ba68c8"))
+		fumes.mesh = pmesh
+		root.add_child(fumes)
 
 	add_child(root)
 	return root
@@ -569,10 +655,12 @@ func _make_flame(pos: Vector3) -> Node3D:
 	return root
 
 
-func _sync_players() -> void:
+func _sync_players(delta: float) -> void:
 	for id: int in _players:
 		var player: SimPlayer = world.players[id]
 		var node: Node3D = _players[id]
+		if not player.alive:
+			continue
 		node.position = _world_pos(Vector2(player.pos))
 		if _intro_active:
 			var t := clampf(_intro_elapsed / _intro_duration, 0.0, 1.0)
@@ -582,15 +670,28 @@ func _sync_players() -> void:
 		if player.is_falling():
 			node.position.y = -1.5 * (1.0 - clampf(float(player.fall_ms) / SimConstants.FALL_MS, 0.0, 1.0))
 		var face := Vector2(player.facing)
-		node.get_node("Model").rotation.y = atan2(face.x, face.y)
+		var model: Node3D = node.get_node("Model")
+		model.rotation.y = atan2(face.x, face.y)
+
+		# Lauf-Bobbing und Vorwärtsneigung
+		if not _walk_phase.has(id):
+			_walk_phase[id] = 0.0
+		if player.moved:
+			var spd: float = float(player.speed())
+			_walk_phase[id] += delta * (spd / 16.0)
+			model.position.y = abs(sin(_walk_phase[id])) * 0.07
+			model.rotation.x = deg_to_rad(9.0)
+		else:
+			_walk_phase[id] = 0.0
+			model.position.y = lerpf(model.position.y, 0.0, 10.0 * delta)
+			model.rotation.x = lerpf(model.rotation.x, 0.0, 10.0 * delta)
+
 		var anims := _animation_player(node)
 		var wanted := "idle"
-		if not player.alive:
-			wanted = "die"
-		elif player.moved:
+		if player.moved:
 			wanted = "sprint" if player.speed() > 130 else "walk"
 		if anims != null and anims.current_animation != wanted:
-			if anims.current_animation != "die":
+			if anims.current_animation != "die" and anims.current_animation != "attack-kick-right" and anims.current_animation != "holding-both":
 				anims.play(wanted)
 		var tag: Label3D = node.get_node("Tag")
 		tag.visible = player.alive and player.is_diseased()

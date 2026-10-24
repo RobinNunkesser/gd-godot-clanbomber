@@ -73,6 +73,62 @@ func pickup(pos: Vector3, color: Color) -> void:
 	_flash(pos + Vector3(0, 0.8, 0), color, 2.5, 0.2)
 
 
+func pickup_text(pos: Vector3, text: String, color: Color) -> void:
+	var label := Label3D.new()
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.text = text
+	label.modulate = color
+	label.outline_modulate = Color.BLACK
+	label.outline_size = 18
+	label.font_size = 72
+	label.pixel_size = 0.0055
+	label.position = pos + Vector3(0, 0.9, 0)
+	label.scale = Vector3.ONE * 0.5
+	add_child(label)
+
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y + 0.9, 0.75).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(label, "scale", Vector3.ONE * 1.15, 0.18).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_property(label, "scale", Vector3.ONE * 1.0, 0.15)
+	var fade_tween := create_tween()
+	fade_tween.tween_interval(0.40)
+	fade_tween.tween_property(label, "modulate:a", 0.0, 0.35)
+	fade_tween.tween_callback(label.queue_free)
+
+
+func confetti(pos: Vector3) -> void:
+	var colors := [Color("ff1744"), Color("ffea00"), Color("00e676"), Color("2979ff"), Color("d500f9")]
+	for i in colors.size():
+		var particles := CPUParticles3D.new()
+		particles.position = pos + Vector3(0, 3.0, 0)
+		particles.emitting = false
+		particles.one_shot = true
+		particles.explosiveness = 0.9
+		particles.amount = 25
+		particles.lifetime = 1.4
+		particles.direction = Vector3.UP
+		particles.spread = 70.0
+		particles.initial_velocity_min = 2.5
+		particles.initial_velocity_max = 5.0
+		particles.gravity = Vector3(0, -5.5, 0)
+		particles.scale_amount_min = 0.5
+		particles.scale_amount_max = 1.2
+		var mesh := QuadMesh.new()
+		mesh.size = Vector2(0.12, 0.07)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = colors[i]
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.emission_enabled = true
+		mat.emission = colors[i]
+		mat.emission_energy_multiplier = 0.5
+		mesh.material = mat
+		particles.mesh = mesh
+		add_child(particles)
+		particles.emitting = true
+		get_tree().create_timer(1.8).timeout.connect(particles.queue_free)
+
+
 func death(pos: Vector3, color: Color) -> void:
 	add_shake(0.25)
 	_burst(pos + Vector3(0, 0.5, 0), Color.WHITE, color, 28, 3.6, 0.9, 0.14)
