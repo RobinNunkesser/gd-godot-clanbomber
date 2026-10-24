@@ -62,8 +62,8 @@ MENU_HELP_CARDS_TEAMS,[color=#ffaaee][b]Karten & Teams:[/b][/color],[color=#ffaa
 MENU_HELP_CARDS_TEXT,"  Unter [b]Karten[/b] wählst du die Karten des Matches; nach jeder Runde folgt die nächste Karte,","  Under [b]Maps[/b] you choose which maps are in the match; after each round the next map follows,"
 MENU_HELP_ORDER_TEXT,"  [b]Reihenfolge[/b] legt fest, ob zufällig (jede Karte einmal pro Durchgang) oder der Reihe nach gespielt wird.",  [b]Order[/b] determines whether maps are played randomly (each once per pass) or in order.
 MENU_HELP_POS_TEXT,  [b]Startpositionen[/b] verteilt die Startfelder zufällig auf die aktiven Spieler (wie im Original).,  [b]Start positions[/b] randomly distribute start tiles among active players (like the original).
-MENU_HELP_EXTERNAL_TEXT,  Unter [b]Einstellungen[/b] kannst du einen externen Kartenordner eintragen; er wird beim Start mitgeladen.,  Under [b]Settings[/b] you can add an external maps folder; it will be loaded at start.
-MENU_HELP_CLANBOMBER_DIR_TEXT,  Alternativ beim Start CLANBOMBER_MAPS_DIR setzen; user://maps wird immer mitgelesen.,  Alternatively set CLANBOMBER_MAPS_DIR at launch; user://maps is always read.
+MENU_HELP_EXTERNAL_TEXT,  Kartenordner: Beim Start wird standardmäßig [b]Documents/ClanBomber/maps[/b] angelegt.,  Maps folder: [b]Documents/ClanBomber/maps[/b] is created and loaded by default.
+MENU_HELP_CLANBOMBER_DIR_TEXT,  Unter [b]Einstellungen[/b] oder via CLANBOMBER_MAPS_DIR kannst du den Pfad anpassen.,  Under [b]Settings[/b] or via CLANBOMBER_MAPS_DIR you can adjust this path.
 MENU_HELP_TEAMS_TEXT,  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.,  Teams: members win together; a team with only one member counts as a single player.
 MENU_HELP_PRESS_ANY,[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center],[center][color=#aaaaaa]Press any key / button to return[/color][/center]
 MENU_HELP_TAB_CONTROLS,Steuerung & Tasten,Controls & Keys

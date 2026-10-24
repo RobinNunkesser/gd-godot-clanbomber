@@ -47,8 +47,8 @@ func _ready() -> void:
 	_game_music = _load_looping_stream("res://assets/audio/music/music_game.ogg")
 	_rng.randomize()
 	_menu.config.load_from(SETTINGS_PATH, [] as Array[String])
-	if _menu.config.external_map_dir.is_empty():
-		_menu.config.external_map_dir = OS.get_environment("CLANBOMBER_MAPS_DIR").strip_edges()
+	_menu.config.external_map_dir = GameConfig.ensure_default_map_dir(_menu.config.external_map_dir)
+	_menu.config.save_to(SETTINGS_PATH)
 	_rebuild_catalog()
 	_setup_vignette()
 	$UI.add_child(_scoreboard)
@@ -82,11 +82,12 @@ func _rebuild_catalog() -> void:
 
 func _expanded_path(path: String) -> String:
 	var value := path.strip_edges()
-	var home := OS.get_environment("HOME")
-	if value == "~":
-		value = home
-	elif value.begins_with("~/"):
-		value = home.path_join(value.substr(2))
+	var home := OS.get_environment("HOME") if OS.has_environment("HOME") else OS.get_environment("USERPROFILE")
+	if not home.is_empty():
+		if value == "~":
+			return home
+		elif value.begins_with("~/") or value.begins_with("~\\"):
+			return home.path_join(value.substr(2))
 	return value
 
 

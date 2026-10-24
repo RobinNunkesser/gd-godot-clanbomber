@@ -309,3 +309,29 @@ func test_screen_shake_persistence() -> void:
 	assert_int(loaded.screen_shake).is_equal(1)
 	assert_float(loaded.shake_multiplier()).is_equal(0.5)
 	DirAccess.remove_absolute(path)
+
+
+func test_canonical_map_dirs_and_contraction() -> void:
+	var docs := GameConfig.canonical_documents_map_dir()
+	assert_bool(docs.is_empty()).is_false()
+	assert_str(docs).contains("ClanBomber/maps")
+
+	var appdata := GameConfig.canonical_appdata_map_dir()
+	assert_bool(appdata.is_empty()).is_false()
+	assert_str(appdata).contains("maps")
+
+	var home := OS.get_environment("HOME") if OS.has_environment("HOME") else OS.get_environment("USERPROFILE")
+	if not home.is_empty():
+		var contracted := GameConfig.contract_user_path(home.path_join("Documents/ClanBomber/maps"))
+		assert_str(contracted).starts_with("~/")
+
+
+func test_ensure_default_map_dir() -> void:
+	# Wenn bereits ein Pfad übergeben wird, bleibt er erhalten
+	assert_str(GameConfig.ensure_default_map_dir("/custom/maps")).is_equal("/custom/maps")
+
+	# Leerer Pfad ermittelt den kanonischen Ordner, legt ihn an und erzeugt README.txt
+	var ensured := GameConfig.ensure_default_map_dir("")
+	assert_bool(ensured.is_empty()).is_false()
+	assert_str(ensured).contains("ClanBomber/maps")
+

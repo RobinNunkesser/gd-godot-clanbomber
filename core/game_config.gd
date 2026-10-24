@@ -61,6 +61,95 @@ var screen_shake: int = 2 # 0 = Aus (0%), 1 = 50%, 2 = 100%
 const SHAKE_LEVELS: Array[String] = ["0 %", "50 %", "100 %"]
 
 
+# --- Externe Kartenordner ---
+
+# Ermittelt den kanonischen Benutzer-Dokumentenordner für ClanBomber-Karten.
+static func canonical_documents_map_dir() -> String:
+	var doc_dir := OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
+	if doc_dir.is_empty():
+		var home := OS.get_environment("HOME") if OS.has_environment("HOME") else OS.get_environment("USERPROFILE")
+		doc_dir = home.path_join("Documents") if not home.is_empty() else ""
+	if doc_dir.is_empty():
+		return ""
+	return doc_dir.path_join("ClanBomber/maps")
+
+
+# Ermittelt den anwendungsbezogenen Datenordner für ClanBomber-Karten.
+static func canonical_appdata_map_dir() -> String:
+	var user_data := OS.get_user_data_dir()
+	if user_data.is_empty():
+		return ""
+	return user_data.path_join("maps")
+
+
+# Kürzt für die Bildschirmanzeige Pfade unter dem Benutzerverzeichnis auf "~/".
+static func contract_user_path(path: String) -> String:
+	var home := OS.get_environment("HOME") if OS.has_environment("HOME") else OS.get_environment("USERPROFILE")
+	if not home.is_empty():
+		var norm_home := home.replace("\\", "/")
+		var norm_path := path.replace("\\", "/")
+		if norm_path == norm_home:
+			return "~"
+		if norm_path.begins_with(norm_home + "/"):
+			return "~/" + norm_path.substr(norm_home.length() + 1)
+	return path
+
+
+# Stellt sicher, dass ein externer Kartenordner konfiguriert und auf der Festplatte vorhanden ist.
+# Prüft Umgebungsvariablen, bestehende Ordner und legt beim Erststart Documents/ClanBomber/maps an.
+static func ensure_default_map_dir(current_dir: String) -> String:
+	var trimmed := current_dir.strip_edges()
+	if not trimmed.is_empty():
+		return trimmed
+
+	# 1. Umgebungsvariable (z. B. für CI / Entwicklung)
+	var env_dir := OS.get_environment("CLANBOMBER_MAPS_DIR").strip_edges()
+	if not env_dir.is_empty():
+		return env_dir
+
+	# 2. Prüfen, ob Documents/ClanBomber/maps bereits existiert
+	var docs_dir := canonical_documents_map_dir()
+	if not docs_dir.is_empty() and DirAccess.dir_exists_absolute(docs_dir):
+		return contract_user_path(docs_dir)
+
+	# 3. Prüfen, ob AppData/maps bereits existiert
+	var app_dir := canonical_appdata_map_dir()
+	if not app_dir.is_empty() and DirAccess.dir_exists_absolute(app_dir):
+		return app_dir
+
+	# 4. Standard: Documents/ClanBomber/maps anlegen und initialisieren
+	if not docs_dir.is_empty():
+		var err := DirAccess.make_dir_recursive_absolute(docs_dir)
+		if err == OK or DirAccess.dir_exists_absolute(docs_dir):
+			_create_readme_if_missing(docs_dir)
+			return contract_user_path(docs_dir)
+
+	# 5. Fallback: AppData/maps anlegen
+	if not app_dir.is_empty():
+		var err := DirAccess.make_dir_recursive_absolute(app_dir)
+		if err == OK or DirAccess.dir_exists_absolute(app_dir):
+			_create_readme_if_missing(app_dir)
+			return app_dir
+
+	return ""
+
+
+static func _create_readme_if_missing(dir: String) -> void:
+	var readme_path := dir.path_join("README.txt")
+	if not FileAccess.file_exists(readme_path):
+		var file := FileAccess.open(readme_path, FileAccess.WRITE)
+		if file != null:
+			file.store_string(
+				"ClanBomber Maps / Karten\n" +
+				"========================\n\n" +
+				"Hier zusaetzliche ClanBomber-Karten (.map) ablegen.\n" +
+				"Drop additional ClanBomber map files (.map) here.\n\n" +
+				"Originalkarten-Paket / Original maps package:\n" +
+				"https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps\n"
+			)
+			file.close()
+
+
 # --- Steuerung ---
 
 # Nächste/vorherige Steuerung für einen Platz. Tastatur und Gamepads sind je nur einmal vergebbar.

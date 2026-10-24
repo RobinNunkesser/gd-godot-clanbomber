@@ -83,7 +83,7 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 `maps/` enthält 35 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). 
 
-Zur Laufzeit werden zusätzlich `user://maps`, der im Menü unter **Externe Karten** eingetragene Ordner und die Umgebungsvariable `CLANBOMBER_MAPS_DIR` gelesen. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos; bei Namenskonflikten gewinnt `res://maps`.
+Zur Laufzeit wird beim ersten Start automatisch der kanonische Benutzerordner `Documents/ClanBomber/maps` (unter Windows `Documents\ClanBomber\maps`, macOS `~/Documents/ClanBomber/maps`) angelegt und unter **Externe Karten** in den Einstellungen vorbefüllt. Zusätzlich werden `user://maps` und die Umgebungsvariable `CLANBOMBER_MAPS_DIR` gelesen. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos; bei Namenskonflikten gewinnt `res://maps`.
 
 ## Export & Testversionen
 
