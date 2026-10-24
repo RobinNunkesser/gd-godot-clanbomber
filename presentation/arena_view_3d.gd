@@ -617,8 +617,10 @@ func _make_extra(cell: Vector2i, type: int) -> Node3D:
 	if tex_path != "" and ResourceLoader.exists(tex_path):
 		var sprite := Sprite3D.new()
 		sprite.name = "Sprite"
-		sprite.texture = load(tex_path)
-		sprite.pixel_size = 0.00078
+		var tex: Texture2D = load(tex_path)
+		sprite.texture = tex
+		var tw: float = float(tex.get_width()) if tex != null and tex.get_width() > 0 else 256.0
+		sprite.pixel_size = 0.80 / tw
 		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		root.add_child(sprite)
