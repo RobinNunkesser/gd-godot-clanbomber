@@ -179,13 +179,10 @@ func test_bomb_on_ahead_cell_blocks() -> void:
 	assert_that(world.players[1].pos).is_equal(Vector2i(5 * CELL, 5 * CELL))
 
 
-func test_players_block_each_other_but_can_leave_shared_cell() -> void:
+func test_players_do_not_block_each_other() -> void:
 	var world := _world(Vector2i(5, 5))
 	world.add_player(2, Vector2i(6, 5))
 	world.set_move_dir(1, Vector2i.RIGHT)
-	_run(world, 1000)
-	assert_that(world.players[1].pos).is_equal(Vector2i(5 * CELL, 5 * CELL))
-	world.players[2].cell = Vector2i(5, 5)
 	_run(world, 1000)
 	assert_int(world.players[1].pos.x).is_greater(5 * CELL)
 
