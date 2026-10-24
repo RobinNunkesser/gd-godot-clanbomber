@@ -70,6 +70,8 @@ var _extras: Dictionary = {}
 var _flames: Dictionary = {}
 var _players: Dictionary = {}
 var _walk_phase: Dictionary = {}
+var _scorch_marks: Dictionary = {}
+var _scorch_material: StandardMaterial3D
 var _time := 0.0
 var _intro_active := false
 var _intro_elapsed := 0.0
@@ -144,6 +146,7 @@ func _setup_environment() -> void:
 func bind(p_world: SimWorld) -> void:
 	world = p_world
 	_walk_phase.clear()
+	_scorch_marks.clear()
 	_connect_effects()
 	for node in [_static_root]:
 		if node != null:
@@ -167,6 +170,8 @@ func _connect_effects() -> void:
 	world.bomb_exploded.connect(func(_b: SimBomb, e: SimExplosion) -> void:
 		var listener := _nearest_player_cell(e.origin)
 		_effects.explosion(e.cells, e.origin, listener)
+		for cell in e.cells:
+			_add_scorch_mark(cell)
 	)
 	world.box_destroyed.connect(func(c: Vector2i) -> void: _effects.box_break(c))
 	world.bomb_placed.connect(func(b: SimBomb) -> void: _effects.bomb_placed(_world_pos(Vector2(b.pos))))
@@ -268,6 +273,63 @@ func _nearest_player_cell(origin: Vector2i) -> Vector2i:
 	return best_cell
 
 
+func _setup_scorch_material() -> void:
+	if _scorch_material != null:
+		return
+	var grad := Gradient.new()
+	grad.colors = [Color(0.08, 0.07, 0.06, 0.85), Color(0.18, 0.14, 0.12, 0.50), Color(0.0, 0.0, 0.0, 0.0)]
+	grad.offsets = [0.0, 0.48, 1.0]
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 1.0)
+	tex.width = 64
+	tex.height = 64
+
+	_scorch_material = StandardMaterial3D.new()
+	_scorch_material.albedo_texture = tex
+	_scorch_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_scorch_material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	_scorch_material.roughness = 0.95
+
+
+func _add_scorch_mark(cell: Vector2i) -> void:
+	if world == null:
+		return
+	var tile := world.board.get_tile(cell)
+	if tile == SimTile.Type.WALL or tile == SimTile.Type.HOLE or tile == SimTile.Type.NONE:
+		return
+	if _scorch_marks.has(cell):
+		var existing: MeshInstance3D = _scorch_marks[cell]
+		if is_instance_valid(existing):
+			var mat: Material = existing.get_surface_override_material(0)
+			if mat is StandardMaterial3D:
+				(mat as StandardMaterial3D).albedo_color.a = minf((mat as StandardMaterial3D).albedo_color.a + 0.35, 0.95)
+			return
+	_setup_scorch_material()
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(0.96, 0.96)
+	var quad := MeshInstance3D.new()
+	quad.mesh = mesh
+	var mat := _scorch_material.duplicate() as StandardMaterial3D
+	mat.albedo_color = Color(1.0, 1.0, 1.0, 0.70)
+	quad.set_surface_override_material(0, mat)
+	quad.position = Vector3(cell.x + 0.5, 0.03, cell.y + 0.5)
+	_static_root.add_child(quad)
+	_scorch_marks[cell] = quad
+
+	var tween := create_tween()
+	tween.tween_interval(22.0)
+	tween.tween_property(mat, "albedo_color:a", 0.0, 12.0)
+	tween.tween_callback(func() -> void:
+		if _scorch_marks.get(cell) == quad:
+			_scorch_marks.erase(cell)
+		if is_instance_valid(quad):
+			quad.queue_free()
+	)
+
+
 func _build_board() -> void:
 	for y in world.board.height:
 		for x in world.board.width:
@@ -305,6 +367,25 @@ func _make_tile_root(cell: Vector2i, tile: int) -> void:
 			_boxes[cell] = crate
 		SimTile.Type.ICE:
 			root.add_child(_add_plane(_ice_material(), Vector3(0, 0.025, 0)))
+			var glint := CPUParticles3D.new()
+			glint.amount = 3
+			glint.lifetime = 1.4
+			glint.direction = Vector3.UP
+			glint.spread = 20.0
+			glint.initial_velocity_min = 0.05
+			glint.initial_velocity_max = 0.15
+			glint.gravity = Vector3.ZERO
+			glint.position = Vector3(0, 0.06, 0)
+			var gmesh := QuadMesh.new()
+			gmesh.size = Vector2(0.06, 0.06)
+			var gmat := StandardMaterial3D.new()
+			gmat.albedo_color = Color("e0f7fa")
+			gmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			gmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			gmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+			gmesh.material = gmat
+			glint.mesh = gmesh
+			root.add_child(glint)
 		SimTile.Type.TRAP:
 			root.add_child(_add_plane(_trap_material(), Vector3(0, 0.025, 0)))
 		SimTile.Type.ARROW_UP:

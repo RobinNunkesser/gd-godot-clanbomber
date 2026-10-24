@@ -65,7 +65,9 @@ func explosion(cells: Array[Vector2i], origin: Vector2i, listener_cell := Vector
 
 
 func box_break(cell: Vector2i) -> void:
-	_burst(_cell_pos(cell, 0.5), Color("a0703a"), Color("5c3b1a"), 16, 3.2, 0.7, 0.12, true)
+	var pos := _cell_pos(cell, 0.45)
+	_debris_burst(pos, Color("a0703a"), Color("5c3b1a"), 8, 3.8, 0.85)
+	_burst(pos, Color("d7c4a3"), Color("a08d72"), 12, 1.6, 0.6, 0.14, false)
 
 
 func pickup(pos: Vector3, color: Color) -> void:
@@ -145,9 +147,63 @@ func tile_drop(cell: Vector2i) -> void:
 
 
 func trap_sprung(cell: Vector2i) -> void:
-	add_shake(0.1)
-	_flash(_cell_pos(cell, 0.6), Color("e040fb"), 5.0, 0.35)
-	_burst(_cell_pos(cell, 0.3), Color("ff80ab"), Color("7b1fa2"), 16, 2.8, 0.65, 0.12)
+	add_shake(0.12)
+	_flash(_cell_pos(cell, 0.6), Color("e040fb"), 6.0, 0.35)
+	_burst(_cell_pos(cell, 0.3), Color("ff80ab"), Color("7b1fa2"), 18, 3.2, 0.65, 0.12)
+	_shockwave(_cell_pos(cell, 0.05), Color("e040fb"), 0.85, 0.28)
+
+
+func _shockwave(pos: Vector3, color: Color, max_radius: float, duration: float) -> void:
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.08
+	torus.outer_radius = 0.12
+	torus.rings = 24
+	torus.ring_segments = 8
+	ring.mesh = torus
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 2.0
+	ring.material_override = mat
+	ring.position = pos
+	add_child(ring)
+
+	var tween := create_tween().set_parallel(true)
+	var scale_target := max_radius / 0.12
+	tween.tween_property(ring, "scale", Vector3(scale_target, 1.0, scale_target), duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(mat, "albedo_color:a", 0.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(ring.queue_free)
+
+
+func _debris_burst(pos: Vector3, color_a: Color, _color_b: Color, amount: int, speed: float, lifetime: float) -> void:
+	var particles := CPUParticles3D.new()
+	particles.position = pos
+	particles.emitting = false
+	particles.one_shot = true
+	particles.explosiveness = 0.95
+	particles.amount = amount
+	particles.lifetime = lifetime
+	particles.direction = Vector3.UP
+	particles.spread = 150.0
+	particles.initial_velocity_min = speed * 0.6
+	particles.initial_velocity_max = speed
+	particles.gravity = Vector3(0, -14.0, 0)
+	particles.scale_amount_min = 0.7
+	particles.scale_amount_max = 1.3
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.18, 0.08, 0.08)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color_a
+	mat.roughness = 0.85
+	mesh.material = mat
+	particles.mesh = mesh
+	add_child(particles)
+	particles.emitting = true
+	get_tree().create_timer(lifetime + 0.3).timeout.connect(particles.queue_free)
 
 
 func _cell_pos(cell: Vector2i, height: float) -> Vector3:

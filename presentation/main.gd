@@ -37,6 +37,7 @@ var _ais: Dictionary = {}
 var _bgm := AudioStreamPlayer.new()
 var _menu_music: AudioStream
 var _game_music: AudioStream
+var _vignette: TextureRect
 
 
 func _ready() -> void:
@@ -49,6 +50,7 @@ func _ready() -> void:
 	if _menu.config.external_map_dir.is_empty():
 		_menu.config.external_map_dir = OS.get_environment("CLANBOMBER_MAPS_DIR").strip_edges()
 	_rebuild_catalog()
+	_setup_vignette()
 	$UI.add_child(_scoreboard)
 	$UI.add_child(_menu)
 	_menu.start_requested.connect(_start_match)
@@ -121,6 +123,27 @@ func _apply_audio_config() -> void:
 		view3d.effects.shake_multiplier = _menu.config.shake_multiplier()
 
 
+func _setup_vignette() -> void:
+	_vignette = TextureRect.new()
+	_vignette.name = "TensionVignette"
+	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	var grad := Gradient.new()
+	grad.colors = [Color(0.85, 0.05, 0.05, 0.0), Color(0.95, 0.02, 0.02, 0.85)]
+	grad.offsets = [0.42, 1.0]
+	var grad_tex := GradientTexture2D.new()
+	grad_tex.gradient = grad
+	grad_tex.fill = GradientTexture2D.FILL_RADIAL
+	grad_tex.fill_from = Vector2(0.5, 0.5)
+	grad_tex.fill_to = Vector2(1.0, 1.0)
+	grad_tex.width = 256
+	grad_tex.height = 256
+	_vignette.texture = grad_tex
+	_vignette.modulate.a = 0.0
+	$UI.add_child(_vignette)
+
+
 func _load_looping_stream(path: String) -> AudioStream:
 	if not ResourceLoader.exists(path):
 		return null
@@ -142,6 +165,8 @@ func _open_menu() -> void:
 	Engine.time_scale = 1.0
 	if view3d != null and view3d.effects != null:
 		view3d.effects.cancel_hitstop()
+	if _vignette != null:
+		_vignette.modulate.a = 0.0
 	_stop_all_rumble()
 	_menu.is_game_active = (_world != null and not _round_over and not _scoreboard.visible)
 	_play_music(_menu_music, -8.0)
@@ -236,6 +261,8 @@ func _try_load_map(map_name: String) -> bool:
 	_round_over = false
 	_hurry_started = false
 	_hurry_beep_at = 0
+	if _vignette != null:
+		_vignette.modulate.a = 0.0
 	banner.modulate = Color.WHITE
 	banner.text = "%s%s" % [map_name.get_basename(), I18n.text("BANNER_MAP_BY") % data.author]
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -526,13 +553,27 @@ func _rumble_explosion(origin: Vector2i) -> void:
 
 
 func _update_hurry() -> void:
-	if _round_over:
+	if _round_over or _world == null:
+		if _vignette != null:
+			_vignette.modulate.a = 0.0
 		return
 	if _world.is_sudden_death():
 		if _hurry_started:
 			_hurry_started = false
 			banner.modulate = Color.WHITE
+		if _vignette != null:
+			_vignette.modulate.a = 0.0
 		return
+
+	if _vignette != null:
+		if _world.round_time_ms <= 10000:
+			var progress := 1.0 - (_world.round_time_ms / 10000.0)
+			var freq: float = 1.6 + progress * 2.2
+			var pulse: float = absf(sin(Time.get_ticks_msec() * 0.001 * TAU * freq))
+			_vignette.modulate.a = (0.18 + 0.38 * progress) * pulse
+		else:
+			_vignette.modulate.a = 0.0
+
 	if _world.round_time_ms > _hurry_threshold_ms:
 		return
 	if not _hurry_started:
@@ -588,6 +629,8 @@ func _check_round_end() -> void:
 		return
 	_round_over = true
 	_hurry_started = false
+	if _vignette != null:
+		_vignette.modulate.a = 0.0
 	Engine.time_scale = 1.0
 	if view3d != null and view3d.effects != null:
 		view3d.effects.cancel_hitstop()
