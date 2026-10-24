@@ -26,4 +26,4 @@ jobs:
         run: godot --headless --path . --import
 
       - name: Run Tests
-        run: addons/gdUnit4/runtest.sh --godot_binary "$(which godot)" --headless -a test
+        run: xvfb-run addons/gdUnit4/runtest.sh --godot_binary "$(which godot)" -a test
