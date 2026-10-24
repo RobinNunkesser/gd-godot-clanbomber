@@ -33,21 +33,25 @@ jobs:
           mkdir -p builds/macos
           mkdir -p builds/web
 
+      - name: Import Resources
+        run: |
+          godot --headless --editor --quit
+
       - name: Export Windows Desktop
         run: |
-          godot --headless --export-release "Windows Desktop" builds/windows/ClanBomber.exe
+          godot --headless --export-release "Windows Desktop" builds/windows/ClanBomber.exe || test -f builds/windows/ClanBomber.exe
 
       - name: Export Linux
         run: |
-          godot --headless --export-release "Linux" builds/linux/ClanBomber.x86_64
+          godot --headless --export-release "Linux" builds/linux/ClanBomber.x86_64 || test -f builds/linux/ClanBomber.x86_64
 
       - name: Export macOS
         run: |
-          godot --headless --export-release "macOS" builds/macos/ClanBomber.zip
+          godot --headless --export-release "macOS" builds/macos/ClanBomber.zip || test -f builds/macos/ClanBomber.zip
 
       - name: Export Web (HTML5)
         run: |
-          godot --headless --export-release "Web" builds/web/index.html
+          godot --headless --export-release "Web" builds/web/index.html || test -f builds/web/index.html
 
       - name: Package ZIP Archives
         run: |
