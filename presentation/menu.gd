@@ -75,6 +75,7 @@ var _edit_slot := 0
 var _edit_text := ""
 var _text := RichTextLabel.new()
 var _preview := MapPreview.new()
+var _help_page := 0
 
 
 func _ready() -> void:
@@ -234,6 +235,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _mode == Mode.HELP:
 		if event.is_pressed() and not event.is_echo():
+			if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right") \
+					or event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down") \
+					or (event is InputEventKey and (event.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_A, KEY_D, KEY_W, KEY_S, KEY_TAB])):
+				_help_page = 1 if _help_page == 0 else 0
+				_render()
+				get_viewport().set_input_as_handled()
+				return
+			if event.is_action_pressed("ui_accept"):
+				if _help_page == 0:
+					_help_page = 1
+					_render()
+					get_viewport().set_input_as_handled()
+					return
 			_mode = Mode.MAIN
 			get_viewport().set_input_as_handled()
 			_render()
@@ -381,6 +395,7 @@ func _accept_main_row() -> void:
 				start_requested.emit()
 		"help":
 			_mode = Mode.HELP
+			_help_page = 0
 		"quit":
 			quit_requested.emit()
 		"players":
@@ -552,32 +567,54 @@ func _render_maps() -> void:
 
 
 func _render_help() -> void:
-	var lines: Array[String] = [
-		"[center][b]%s[/b][/center]" % I18n.text("MENU_HELP_TITLE"),
-		"",
-		I18n.text("MENU_HELP_P1"),
-		I18n.text("MENU_HELP_P2"),
-		I18n.text("MENU_HELP_PAD"),
-		"",
-		I18n.text("MENU_HELP_SHORTCUTS"),
-		I18n.text("MENU_HELP_ESC"),
-		I18n.text("MENU_HELP_M"),
-		I18n.text("MENU_HELP_F4"),
-		"",
-		I18n.text("MENU_HELP_R"),
-		I18n.text("MENU_HELP_F5"),
-		"",
-		I18n.text("MENU_HELP_CARDS_TEAMS"),
-		I18n.text("MENU_HELP_CARDS_TEXT"),
-		I18n.text("MENU_HELP_ORDER_TEXT"),
-		I18n.text("MENU_HELP_POS_TEXT"),
-		I18n.text("MENU_HELP_EXTERNAL_TEXT"),
-		I18n.text("MENU_HELP_CLANBOMBER_DIR_TEXT"),
-		I18n.text("MENU_HELP_TEAMS_TEXT"),
-		"",
-		I18n.text("MENU_HELP_PRESS_ANY")
-	]
-	_text.text = "\n".join(lines)
+	if _help_page == 0:
+		var lines: Array[String] = [
+			"[center][b]%s[/b][/center]" % I18n.text("MENU_HELP_TITLE"),
+			"[center][color=#66aaff]◀  [b]%s (1/2)[/b]  ▶[/color][/center]" % I18n.text("MENU_HELP_TAB_CONTROLS"),
+			"",
+			I18n.text("MENU_HELP_P1"),
+			I18n.text("MENU_HELP_P2"),
+			I18n.text("MENU_HELP_PAD"),
+			"",
+			I18n.text("MENU_HELP_SHORTCUTS"),
+			I18n.text("MENU_HELP_ESC"),
+			I18n.text("MENU_HELP_M"),
+			I18n.text("MENU_HELP_F4"),
+			"",
+			I18n.text("MENU_HELP_R"),
+			I18n.text("MENU_HELP_F5"),
+			"",
+			I18n.text("MENU_HELP_CARDS_TEAMS"),
+			I18n.text("MENU_HELP_CARDS_TEXT"),
+			I18n.text("MENU_HELP_ORDER_TEXT"),
+			I18n.text("MENU_HELP_POS_TEXT"),
+			I18n.text("MENU_HELP_EXTERNAL_TEXT"),
+			I18n.text("MENU_HELP_CLANBOMBER_DIR_TEXT"),
+			I18n.text("MENU_HELP_TEAMS_TEXT"),
+			"",
+			I18n.text("MENU_HELP_NAV_HINT")
+		]
+		_text.text = "\n".join(lines)
+	else:
+		var lines: Array[String] = [
+			"[center][b]%s[/b][/center]" % I18n.text("MENU_HELP_TITLE"),
+			"[center][color=#ffaa44]◀  [b]%s (2/2)[/b]  ▶[/color][/center]" % I18n.text("MENU_HELP_TAB_ITEMS"),
+			"",
+			"[color=#66ff66][b]%s[/b][/color]" % I18n.text("MENU_HELP_EXTRAS_HEADER"),
+			"  [img=24x24]res://assets/textures/drops/token_bomb.png[/img]  [b]%s[/b]: %s" % [I18n.text("EXTRA_BOMB_TITLE"), I18n.text("EXTRA_BOMB_DESC")],
+			"  [img=24x24]res://assets/textures/drops/token_power.png[/img]  [b]%s[/b]: %s" % [I18n.text("EXTRA_POWER_TITLE"), I18n.text("EXTRA_POWER_DESC")],
+			"  [img=24x24]res://assets/textures/drops/token_skate.png[/img]  [b]%s[/b]: %s" % [I18n.text("EXTRA_SKATE_TITLE"), I18n.text("EXTRA_SKATE_DESC")],
+			"  [img=24x24]res://assets/textures/drops/token_kick.png[/img]  [b]%s[/b]: %s" % [I18n.text("EXTRA_KICK_TITLE"), I18n.text("EXTRA_KICK_DESC")],
+			"  [img=24x24]res://assets/textures/drops/token_glove.png[/img]  [b]%s[/b]: %s" % [I18n.text("EXTRA_GLOVE_TITLE"), I18n.text("EXTRA_GLOVE_DESC")],
+			"",
+			"[color=#ff8a80][b]%s[/b][/color]" % I18n.text("MENU_HELP_DISEASES_HEADER"),
+			"  [img=24x24]res://assets/textures/drops/token_overdrive.png[/img]  [b]%s[/b]: %s" % [I18n.text("DISEASE_OVERDRIVE_TITLE"), I18n.text("DISEASE_OVERDRIVE_DESC")],
+			"  [img=24x24]res://assets/textures/drops/token_reverse.png[/img]  [b]%s[/b]: %s" % [I18n.text("DISEASE_REVERSE_TITLE"), I18n.text("DISEASE_REVERSE_DESC")],
+			"  [img=24x24]res://assets/textures/drops/token_autobomb.png[/img]  [b]%s[/b]: %s" % [I18n.text("DISEASE_AUTOBOMB_TITLE"), I18n.text("DISEASE_AUTOBOMB_DESC")],
+			"",
+			I18n.text("MENU_HELP_NAV_HINT")
+		]
+		_text.text = "\n".join(lines)
 
 
 func _row_line(row: int, label: String, value: String, adjustable: bool) -> String:

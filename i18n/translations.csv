@@ -66,6 +66,27 @@ MENU_HELP_EXTERNAL_TEXT,  Unter [b]Einstellungen[/b] kannst du einen externen Ka
 MENU_HELP_CLANBOMBER_DIR_TEXT,  Alternativ beim Start CLANBOMBER_MAPS_DIR setzen; user://maps wird immer mitgelesen.,  Alternatively set CLANBOMBER_MAPS_DIR at launch; user://maps is always read.
 MENU_HELP_TEAMS_TEXT,  Teams: Mitglieder gewinnen gemeinsam; ein Team mit nur einem Mitglied zählt als Einzelspieler.,  Teams: members win together; a team with only one member counts as a single player.
 MENU_HELP_PRESS_ANY,[center][color=#aaaaaa]Beliebige Taste / Button drücken zum Zurückkehren[/color][/center],[center][color=#aaaaaa]Press any key / button to return[/color][/center]
+MENU_HELP_TAB_CONTROLS,Steuerung & Tasten,Controls & Keys
+MENU_HELP_TAB_ITEMS,Extras & Flüche,Pickups & Diseases
+MENU_HELP_EXTRAS_HEADER,Extras (Pickups):,Extras (Pickups):
+EXTRA_BOMB_TITLE,Bombe,Bomb
+EXTRA_BOMB_DESC,Erhöht die Anzahl gleichzeitig legbarer Bomben um +1.,Increases maximum simultaneous bombs by +1.
+EXTRA_POWER_TITLE,Feuer,Fire
+EXTRA_POWER_DESC,Erhöht den Explosionsradius der Bomben um +1 Kachel.,Increases bomb explosion blast range by +1 tile.
+EXTRA_SKATE_TITLE,Skateboard,Skateboard
+EXTRA_SKATE_DESC,Erhöht dauerhaft die Laufgeschwindigkeit deiner Spielfigur.,Increases character movement speed.
+EXTRA_KICK_TITLE,Tritt,Kick
+EXTRA_KICK_DESC,"Lauf gegen liegende Bomben, um sie wegzutreten.","Run into placed bombs to kick them away."
+EXTRA_GLOVE_TITLE,Handschuh,Glove
+EXTRA_GLOVE_DESC,Hebt Bomben auf und wirft sie mit der Bombentaste.,Pick up and throw placed bombs with the bomb button.
+MENU_HELP_DISEASES_HEADER,Krankheiten & Flüche (Diseases):,Diseases & Curses:
+DISEASE_OVERDRIVE_TITLE,Turbo,Overdrive
+DISEASE_OVERDRIVE_DESC,"Extreme, kaum kontrollierbare Geschwindigkeit für kurze Zeit.","Extreme, barely controllable running speed for a short duration."
+DISEASE_REVERSE_TITLE,Verwirrung,Reverse
+DISEASE_REVERSE_DESC,"Invertiert deine Steuerungsrichtung (oben ↔ unten, links ↔ rechts).","Inverts movement direction controls (up ↔ down, left ↔ right)."
+DISEASE_AUTOBOMB_TITLE,Durchfall,Autobomb
+DISEASE_AUTOBOMB_DESC,Legt beim Laufen ununterbrochen automatisch Bomben.,Uncontrollably drops bombs automatically whenever you move.
+MENU_HELP_NAV_HINT,"[center][color=#aaaaaa]◀ / ▶  Seite wechseln   •   Esc / Enter / B  Zurück[/color][/center]","[center][color=#aaaaaa]◀ / ▶  Change page   •   Esc / Enter / B  Back[/color][/center]"
 HURRY_UP,HURRY UP!,HURRY UP!
 SUDDEN_DEATH,SUDDEN DEATH,SUDDEN DEATH
 BANNER_MAP_BY,  (von %s),  (by %s)
