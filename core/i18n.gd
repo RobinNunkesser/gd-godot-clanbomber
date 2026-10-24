@@ -36,15 +36,24 @@ static func text(key: String) -> String:
 	if not _loaded:
 		init()
 	var entry: Dictionary = _messages.get(key, {})
-	if entry.is_empty():
-		return TranslationServer.translate(key)
-	return entry.get(_lang, key)
+	if not entry.is_empty():
+		return entry.get(_lang, key)
+	var translated := TranslationServer.translate(key)
+	if not translated.is_empty():
+		return translated
+	return key
 
 
 static func _load() -> void:
 	if _loaded:
 		return
 	_loaded = true
+	for lang_code in LANGS:
+		var tr_path := "res://i18n/translations.%s.translation" % lang_code
+		if ResourceLoader.exists(tr_path):
+			var tr_res: Translation = load(tr_path)
+			if tr_res != null:
+				TranslationServer.add_translation(tr_res)
 	var file := FileAccess.open(CSV_PATH, FileAccess.READ)
 	if file == null:
 		return
