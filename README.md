@@ -4,7 +4,7 @@
 
 Moderne Godot-4-Neuauflage (2.5D-Präsentation, 2D-Simulationskern). Referenzprojekt für agentische Spieleentwicklung und offener Community-Remake.
 
-Design-Quellen (im Workspace `work`): `agent-workbench/projects/clanbomber-godot/` mit `GDD.md` (normativ) und `docs/reference/ORIGINAL_BEHAVIOR.md` (Verhalten des Originals, Clean-Room-Referenz).
+Design-Dokumentation: [docs/GDD.md](docs/GDD.md) (Game Design Document) und [docs/reference/ORIGINAL_BEHAVIOR.md](docs/reference/ORIGINAL_BEHAVIOR.md) (Verhalten des Originals, Clean-Room-Referenz).
 
 Aktueller Stand und nächste Schritte: [STATUS.md](STATUS.md). Details zu Lizenzen und Drittinhalten: [THIRD_PARTY.md](THIRD_PARTY.md).
 
@@ -65,13 +65,13 @@ Vor jeder Runde fliegen die Bomber zur Startposition (Steuerung gesperrt), bei 2
 
 ## Tests
 
-GdUnit4 (v6.2.2, unter `addons/` mitgeliefert), Godot 4.7. Aktuell laufen 177 Tests (175 Kern, 2 Präsentation) grün; der GitHub-Actions-Workflow `.github/workflows/test.yml` führt sie bei Push und Pull Request aus:
+GdUnit4 (v6.2.2, unter `addons/` mitgeliefert), Godot 4.7. Aktuell laufen 182 Tests (175 Kern, 7 Präsentation) grün; der GitHub-Actions-Workflow `.github/workflows/test.yml` führt sie bei Push und Pull Request aus:
 
 ```sh
 GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 ```
 
-`map_parser_test.gd` lädt zusätzlich alle Originalkarten, wenn der Referenzbaum im Monorepo (`artifacts/references/forks/ClanBomber2/src/maps`) oder `CLANBOMBER_MAPS_DIR` verfügbar ist, sonst wird dieser Test übersprungen. Die Originalkarten sind bewusst nicht Teil dieses Repos (Lizenz-/Rechteklärung offen).
+`map_parser_test.gd` lädt zusätzlich alle Originalkarten, wenn das Schwester-Repository `gd-godot-clanbomber-original-maps` neben diesem Ordner liegt oder `CLANBOMBER_MAPS_DIR` gesetzt ist, sonst wird dieser Test übersprungen. Die Originalkarten sind bewusst nicht Teil dieses Repos (Lizenz-/Rechteklärung offen).
 
 ## Bekannte Lücken gegenüber dem GDD
 
@@ -81,7 +81,7 @@ GODOT_BIN=$(which godot) addons/gdUnit4/runtest.sh -a test
 
 ## Karten
 
-`maps/` enthält 37 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). 
+`maps/` enthält 35 eigene Karten (MIT): einheitlich auf englische Titel im Title Case benannt (z. B. `Crossroads`, `Ice Rink`, `Box Depot`, `Chokepoint`, `Dead End`, `Twin Vortex`, `Chaos Grid`, `Spiral Maze`). 
 
 Zur Laufzeit werden zusätzlich `user://maps`, der im Menü unter **Externe Karten** eingetragene Ordner und die Umgebungsvariable `CLANBOMBER_MAPS_DIR` gelesen. Die 33 historischen Originalkarten von ClanBomber liegen im separaten GPL-Datenpaket [gd-godot-clanbomber-original-maps](https://github.com/RobinNunkesser/gd-godot-clanbomber-original-maps) und sind nicht Teil dieses Repos; bei Namenskonflikten gewinnt `res://maps`.
 

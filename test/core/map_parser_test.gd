@@ -18,10 +18,9 @@ const CLASSIC := "Andreas Hundt
 *****************
 "
 
-# Kandidaten für das GPL-Datenpaket mit den Originalkarten (Geschwister-Repo im Monorepo oder Referenzbaum).
+# Kandidaten für das optionale GPL-Datenpaket mit den Originalkarten (Geschwister-Repo oder CLANBOMBER_MAPS_DIR).
 const ORIGINAL_MAPS_CANDIDATES := [
 	"../gd-godot-clanbomber-original-maps/maps",
-	"../../../../references/forks/ClanBomber2/src/maps",
 ]
 
 

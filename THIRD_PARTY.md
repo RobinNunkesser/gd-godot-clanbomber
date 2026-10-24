@@ -22,7 +22,7 @@ Dieses Repository (Code, eigene Karten und neu erstellte Assets) steht final unt
 
 ## Abgrenzung zum Original (Clean-Room-Status)
 
-Der Code ist eine vollständige Clean-Room-Neuimplementierung auf Basis einer funktionalen Verhaltensbeschreibung (`ORIGINAL_BEHAVIOR.md` im Workspace `agent-workbench`). Es wurde kein Quellcode, keine Binärdatei und kein geschütztes Asset des historischen C++-Spiels übernommen. Damit besteht keinerlei GPL-Bindung für dieses Repository.
+Der Code ist eine vollständige Clean-Room-Neuimplementierung auf Basis einer funktionalen Verhaltensbeschreibung ([ORIGINAL_BEHAVIOR.md](docs/reference/ORIGINAL_BEHAVIOR.md)). Es wurde kein Quellcode, keine Binärdatei und kein geschütztes Asset des historischen C++-Spiels übernommen. Damit besteht keinerlei GPL-Bindung für dieses Repository.
 
 ## Rechtlicher Disclaimer & Markenschutz
 

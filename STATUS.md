@@ -1,8 +1,8 @@
 # Projektstatus und nächste Schritte
 
-Stand: 2026-10-23 (verifiziert). Dieses Dokument ist der Wiedereinstieg: Was ist fertig, was wurde entschieden, was kommt als Nächstes.
+Stand: 2026-10-24 (verifiziert). Dieses Dokument ist der Wiedereinstieg: Was ist fertig, was wurde entschieden, was kommt als Nächstes.
 
-Letzte Prüfung: 177 Tests grün (175 Kern, 2 Präsentation), Smoke-Test ohne Laufzeitfehler (nur Exit-Warnungen).
+Letzte Prüfung: 182 Tests grün (175 Kern, 7 Präsentation), Smoke-Test ohne Laufzeitfehler (nur Exit-Warnungen).
 
 ## Ziel
 
@@ -12,11 +12,9 @@ Moderne Godot-4-Neuauflage des nicht mehr gepflegten C++-Spiels *ClanBomber* als
 
 | Was | Ort |
 |---|---|
-| Dieses Spiel | `artifacts/consumers/production/godot/gd-godot-clanbomber` (GitHub `RobinNunkesser/gd-godot-clanbomber`, privat, MIT) |
+| Dieses Spiel | GitHub `RobinNunkesser/gd-godot-clanbomber` (MIT) |
 | Originalkarten (GPL) | Schwesterrepo `gd-godot-clanbomber-original-maps` |
-| Design (normativ), Verhaltensreferenz, Asset-Bewertung | `agent-workbench/projects/clanbomber-godot/`: `GDD.md`, `docs/gdd/05_parameters.md`, `docs/reference/ORIGINAL_BEHAVIOR.md`, `docs/assets/ASSET_CANDIDATES.md` |
-| Original-Quellcode (nur lesen) | `artifacts/references/forks/ClanBomber2/src/` und `.../clanbomber/` |
-| Rohmaterial der Asset-Pakete (nicht versioniert) | `agent-workbench/projects/clanbomber-godot/assets-candidates/` und die ZIPs im Projektordner |
+| Design (normativ), Verhaltensreferenz, Asset-Bewertung | `docs/`: `docs/GDD.md`, `docs/gdd/05_parameters.md`, `docs/reference/ORIGINAL_BEHAVIOR.md`, `docs/assets/ASSET_CANDIDATES.md` |
 
 ## Entwicklung
 
@@ -32,11 +30,10 @@ godot --path . --write-movie /tmp/s.png --quit-after 40           # Screenshot -
 Hinweise:
 - Die Meldung „Remote Debugger … 127.0.0.1:0“ ist harmlos.
 - Neue GLBs: Textur zuerst kopieren, dann importieren. Sonst erscheinen sie weiß (dann `*.glb.import` löschen und neu importieren).
-- Workflow-Regeln des Workspace: im Hauptrepo Dateien einzeln committen, im Spielrepo ist `git add -A` erlaubt. Danach den Submodul-Pointer im Hauptrepo einzeln nachziehen.
 
 ## Fertig
 
-Simulationskern & Spielsysteme (177 Tests grün: 175 Kern, 2 Präsentation):
+Simulationskern & Spielsysteme (182 Tests grün: 175 Kern, 7 Präsentation):
 
 | Slice | Inhalt |
 |---|---|
@@ -55,7 +52,7 @@ Simulationskern & Spielsysteme (177 Tests grün: 175 Kern, 2 Präsentation):
 Präsentation:
 - 3D-Ansicht (`presentation/arena_view_3d.gd`) mit Kenney-Modellen, 3D-Partikeln und Skybox. (Der frühere 2D-Platzhaltermodus wurde entfernt.)
 - Grafik (Mischung aus zwei Kenney-Kits, CC0 und PBR-Texturen): Mini Dungeon für Wände (`wall`), Boxen (`barrel`) und Figuren 5/6 (`human`, `orc`); Platformer Kit für Bomben (`bomb`) und Figuren 1–4 (`oozi/oobi/oopi/oodi`). PBR-Texturen für Boden (`tile_floor`), Eis (`tile_ice`), animierte Förderband-Pfeile (`tile_arrow`) und pulsierende Fallenfelder (`tile_trap`).
-- 37 Karten in `maps/` (alle Eigenkarten des Autors).
+- 35 Karten in `maps/` (alle Eigenkarten des Autors).
 - App-Icon (`assets/icon.png`, KI-generiert, MIT) und überarbeiteter Extra-Pickup-Sound (Commit 2026-10-23).
 
 ## Entscheidungen
@@ -87,13 +84,13 @@ Präsentation:
 ## Verbleibende GDD-Abweichungen
 
 - **Bomben-Entprellung:** Die im Original/GDD genannte 177-ms-Sperre beim Legen ist nicht implementiert (durch Tasten-Events praktisch entschärft).
-- **Originalkarten:** Das Spiel bringt nur die eigenen 37 Karten mit. Die 33 Originalkarten funktionieren zur Laufzeit über den externen Kartenordner, sind aber nicht gebündelt.
+- **Originalkarten:** Das Spiel bringt nur die eigenen 35 Karten mit. Die 33 Originalkarten funktionieren zur Laufzeit über den externen Kartenordner, sind aber nicht gebündelt.
 
 ## Offene Punkte der Präsentation
 
 - Figuren sind in der 3D-Ansicht klein und schwer zu unterscheiden (Skalierung in `arena_view_3d.gd`, `model.scale`; Spielerring zeigt die Farbe). Ab Spieler 7 wiederholen sich Modelle, werden aber farbig überlagert.
 - Eis, Trap und Pfeile nutzen eigene Texturen (`assets/textures/tiles/tile_ice.png`, `tile_trap.png`, `tile_arrow.png`) mit Emissive-Material; Extras und Flammen sind 3D-Modelle.
-- Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt (Rohmaterial bleibt in `agent-workbench/projects/clanbomber-godot/assets-candidates/`).
+- Blocky Characters und das Dungeon-Kit-Template wurden aus dem Repo entfernt.
 - Extras sind Mini-Dungeon-Modelle (`weapon-sword` Power, `pot` Bomb, `coin` Skateboard, `weapon-spear` Kick, `shield-round` Glove, `potion` für die drei Krankheiten, farblich getönt) plus schwebender Buchstabe; Zuordnung in `EXTRA_MODELS` in `arena_view_3d.gd`. Ungenutzt: `key`, `chest`, `column`, `rocks`.
 - Das Menü kennt 8 Plätze (Aus, Tastatur 1/2, Gamepad 1-8, AI); Standard ist Mensch gegen AI auf `Crossroads.map`.
 - Steuerung & Hilfe sowie "Spiel beenden" sind direkt ins Startmenü integriert.
@@ -114,5 +111,4 @@ Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentati
 
 ## Offene Fragen
 
-- Ob die Repos öffentlich werden (das GitHub-Repo ist derzeit privat).
 - Ob die Git-Historie des GPL-Kartenrepos bereinigt werden soll (die Eigenkarten sind dort in älterer Historie noch einsehbar).
