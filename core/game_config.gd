@@ -57,6 +57,8 @@ var music_volume: int = 4
 var sfx_volume: int = 4
 var _last_music_volume: int = 4
 var _last_sfx_volume: int = 4
+var screen_shake: int = 2 # 0 = Aus (0%), 1 = 50%, 2 = 100%
+const SHAKE_LEVELS: Array[String] = ["0 %", "50 %", "100 %"]
 
 
 # --- Steuerung ---
@@ -261,6 +263,26 @@ func toggle_sfx_mute() -> void:
 		sfx_volume = _last_sfx_volume if _last_sfx_volume > 0 else 4
 
 
+# --- Video / Screen Shake ---
+
+func cycle_shake(step: int) -> void:
+	screen_shake = clampi(screen_shake + step, 0, SHAKE_LEVELS.size() - 1)
+
+
+func shake_multiplier() -> float:
+	match screen_shake:
+		0:
+			return 0.0
+		1:
+			return 0.5
+		_:
+			return 1.0
+
+
+func shake_label() -> String:
+	return SHAKE_LEVELS[screen_shake]
+
+
 # --- Speichern und Laden ---
 
 func save_to(path: String) -> Error:
@@ -276,6 +298,7 @@ func save_to(path: String) -> Error:
 	file.set_value("match", "round_time_s", round_time_s)
 	file.set_value("audio", "music", music_volume)
 	file.set_value("audio", "sfx", sfx_volume)
+	file.set_value("video", "screen_shake", screen_shake)
 	return file.save(path)
 
 
@@ -313,6 +336,7 @@ func load_from(path: String, known_maps: Array[String]) -> void:
 	round_time_s = saved_time if ROUND_TIMES.has(saved_time) else DEFAULT_ROUND_TIME_S
 	music_volume = clampi(int(file.get_value("audio", "music", music_volume)), 0, VOLUME_LEVELS.size() - 1)
 	sfx_volume = clampi(int(file.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_LEVELS.size() - 1)
+	screen_shake = clampi(int(file.get_value("video", "screen_shake", screen_shake)), 0, SHAKE_LEVELS.size() - 1)
 	if music_volume > 0:
 		_last_music_volume = music_volume
 	if sfx_volume > 0:

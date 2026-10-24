@@ -178,7 +178,7 @@ func _settings_summary() -> String:
 		path = I18n.text("MENU_STANDARD")
 	else:
 		path = path.get_file() if path.get_file() != "" else path.get_basename()
-	return "%s/%s • %s" % [config.music_label(), config.sfx_label(), path]
+	return "%s/%s • %s • %s" % [config.music_label(), config.sfx_label(), config.shake_label(), path]
 
 
 func _row_index(id: String) -> int:
@@ -213,7 +213,7 @@ func _row_count() -> int:
 		Mode.MATCH:
 			return 4
 		Mode.SETTINGS:
-			return 4
+			return 5
 	return _main_rows().size()
 
 
@@ -340,6 +340,9 @@ func _change(step: int) -> void:
 				config.cycle_sfx(step)
 				audio_changed.emit()
 			2:
+				config.cycle_shake(step)
+				audio_changed.emit()
+			3:
 				_lang_index = posmod(_lang_index + step, LANGS.size())
 				I18n.set_lang_index(_lang_index)
 		return
@@ -359,9 +362,9 @@ func _accept() -> void:
 		Mode.MAPS:
 			_accept_map_row()
 		Mode.SETTINGS:
-			if _row == 3:
+			if _row == 4:
 				_begin_edit("mapdir", config.external_map_dir)
-			elif _row == 2:
+			elif _row == 2 or _row == 3:
 				_change(1)
 		_:
 			_accept_main_row()
@@ -503,8 +506,9 @@ func _render_settings() -> void:
 	var lines: Array[String] = ["[center][b]%s[/b][/center]" % I18n.text("MENU_SETTINGS_TITLE"), ""]
 	lines.append(_row_line(0, I18n.text("MENU_MUSIC"), config.music_label(), true))
 	lines.append(_row_line(1, I18n.text("MENU_SFX"), config.sfx_label(), true))
-	lines.append(_row_line(2, I18n.text("MENU_LANGUAGE"), LANGS[_lang_index], true))
-	lines.append(_row_line(3, I18n.text("MENU_EXTERNAL_MAPS"), _external_dir_label(), false))
+	lines.append(_row_line(2, I18n.text("MENU_SCREEN_SHAKE"), config.shake_label(), true))
+	lines.append(_row_line(3, I18n.text("MENU_LANGUAGE"), LANGS[_lang_index], true))
+	lines.append(_row_line(4, I18n.text("MENU_EXTERNAL_MAPS"), _external_dir_label(), false))
 	lines.append("")
 	var hint := I18n.text("MENU_PATH_HINT") if _editing and _edit_kind == "mapdir" else I18n.text("MENU_SETTINGS_HINT")
 	lines.append("[center][color=#aaaaaa]%s[/color][/center]" % hint)

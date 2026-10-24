@@ -26,6 +26,7 @@ MENU_SEQUENTIAL,Der Reihe nach,In order
 MENU_SETTINGS_TITLE,Einstellungen,Settings
 MENU_MUSIC,Musik,Music
 MENU_SFX,Ton-Effekte,Sound Effects
+MENU_SCREEN_SHAKE,Bildschirmwackeln,Screen Shake
 MENU_EXTERNAL_MAPS,Externe Karten,External Maps
 MENU_STANDARD,Standard,Default
 MENU_LANGUAGE,Sprache,Language

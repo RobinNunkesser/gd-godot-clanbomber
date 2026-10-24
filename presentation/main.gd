@@ -117,6 +117,8 @@ func _apply_audio_config() -> void:
 	if sfx_bus >= 0:
 		AudioServer.set_bus_mute(sfx_bus, not _menu.config.is_sfx_enabled())
 		AudioServer.set_bus_volume_db(sfx_bus, _menu.config.sfx_db())
+	if view3d != null and view3d.effects != null:
+		view3d.effects.shake_multiplier = _menu.config.shake_multiplier()
 
 
 func _load_looping_stream(path: String) -> AudioStream:
@@ -137,12 +139,19 @@ func _play_music(stream: AudioStream, volume_db := -8.0) -> void:
 
 
 func _open_menu() -> void:
+	Engine.time_scale = 1.0
+	if view3d != null and view3d.effects != null:
+		view3d.effects.cancel_hitstop()
+	_stop_all_rumble()
 	_menu.is_game_active = (_world != null and not _round_over and not _scoreboard.visible)
 	_play_music(_menu_music, -8.0)
 	_menu.open()
 
 
 func _resume_game() -> void:
+	Engine.time_scale = 1.0
+	if view3d != null and view3d.effects != null:
+		view3d.effects.cancel_hitstop()
 	_menu.config.save_to(SETTINGS_PATH)
 	_play_music(_game_music, -10.0)
 
@@ -221,6 +230,7 @@ func _try_load_map(map_name: String) -> bool:
 	_current_map = map_name
 	_connect_sounds()
 	view3d.bind(_world)
+	view3d.effects.shake_multiplier = _menu.config.shake_multiplier()
 	view3d.play_intro(INTRO_DURATION_S)
 	_intro = true
 	_round_over = false
@@ -393,6 +403,10 @@ func _continue_after_scoreboard() -> void:
 # Neues Match mit den Menüeinstellungen; die Karten laufen nach der Kartenauswahl (zufällig oder der Reihe nach),
 # nach jeder Runde folgt die nächste.
 func _start_match() -> void:
+	Engine.time_scale = 1.0
+	if view3d != null and view3d.effects != null:
+		view3d.effects.cancel_hitstop()
+	_stop_all_rumble()
 	var config := _menu.config
 	config.save_to(SETTINGS_PATH)
 	_menu.is_game_active = true
@@ -449,15 +463,23 @@ func _axis(left: Key, right: Key, up: Key, down: Key) -> Vector2i:
 func _on_player_died(player_id: int, _killer_id: int) -> void:
 	banner.text = I18n.text("BANNER_PLAYER_DIED") % _player_name(player_id)
 	sfx.play("death")
+	if view3d != null and view3d.effects != null:
+		view3d.effects.hitstop(0.065, 0.05)
+	_rumble_player(player_id, 0.9, 0.7, 0.4)
 
 
 func _connect_sounds() -> void:
 	_world.player_died.connect(_on_player_died)
 	_world.player_falling.connect(func(id: int) -> void:
 		banner.text = I18n.text("BANNER_PLAYER_FELL") % _player_name(id)
-		sfx.play("death", -2.0))
+		sfx.play("death", -2.0)
+		_rumble_player(id, 0.5, 0.5, 0.25))
 	_world.bomb_placed.connect(func(_b: SimBomb) -> void: sfx.play("bomb_place", -4.0))
-	_world.bomb_exploded.connect(func(_b: SimBomb, _e: SimExplosion) -> void: sfx.play("explosion"))
+	_world.bomb_exploded.connect(func(_b: SimBomb, e: SimExplosion) -> void:
+		sfx.play("explosion")
+		if view3d != null and view3d.effects != null:
+			view3d.effects.hitstop(0.035, 0.05)
+		_rumble_explosion(e.origin))
 	_world.box_destroyed.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -6.0))
 	_world.extra_collected.connect(func(_id: int, type: int) -> void:
 		sfx.play("disease" if type in ArenaView3D.DISEASES else "extra_pickup"))
@@ -469,6 +491,38 @@ func _connect_sounds() -> void:
 		banner.text = I18n.text("SUDDEN_DEATH") + "!"
 		sfx.play("disease"))
 	_world.tile_vanishing.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -3.0))
+
+
+func _stop_all_rumble() -> void:
+	for dev in 8:
+		Input.stop_joy_vibration(dev)
+
+
+func _rumble_player(slot_or_id: int, weak: float, strong: float, duration: float) -> void:
+	var mult := _menu.config.shake_multiplier()
+	if mult <= 0.0:
+		return
+	var slot := slot_or_id - 1 if slot_or_id > 0 else slot_or_id
+	var dev := _menu.config.pad_device(slot)
+	if dev >= 0:
+		Input.start_joy_vibration(dev, weak * mult, strong * mult, duration)
+
+
+func _rumble_explosion(origin: Vector2i) -> void:
+	var mult := _menu.config.shake_multiplier()
+	if mult <= 0.0 or _world == null:
+		return
+	for id: int in _world.players:
+		var player: SimPlayer = _world.players[id]
+		if not player.alive:
+			continue
+		var dev := _menu.config.pad_device(id - 1)
+		if dev < 0:
+			continue
+		var dist := origin.distance_to(player.cell)
+		if dist <= 8.0:
+			var factor := clampf(1.0 - (dist / 8.0), 0.0, 1.0)
+			Input.start_joy_vibration(dev, 0.40 * factor * mult, 0.65 * factor * mult, 0.18)
 
 
 func _update_hurry() -> void:
@@ -534,6 +588,10 @@ func _check_round_end() -> void:
 		return
 	_round_over = true
 	_hurry_started = false
+	Engine.time_scale = 1.0
+	if view3d != null and view3d.effects != null:
+		view3d.effects.cancel_hitstop()
+	_stop_all_rumble()
 	banner.modulate = Color.WHITE
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	banner.anchor_left = 0.0

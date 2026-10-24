@@ -70,6 +70,9 @@ var _bomb_mesh := SphereMesh.new()
 var _materials: Dictionary = {}
 var _effects := Effects3D.new()
 
+var effects: Effects3D:
+	get: return _effects
+
 
 func _ready() -> void:
 	_wall_mesh.size = Vector3(1, 0.6, 1)
@@ -143,7 +146,10 @@ func bind(p_world: SimWorld) -> void:
 
 
 func _connect_effects() -> void:
-	world.bomb_exploded.connect(func(_b: SimBomb, e: SimExplosion) -> void: _effects.explosion(e.cells, e.origin))
+	world.bomb_exploded.connect(func(_b: SimBomb, e: SimExplosion) -> void:
+		var listener := _nearest_player_cell(e.origin)
+		_effects.explosion(e.cells, e.origin, listener)
+	)
 	world.box_destroyed.connect(func(c: Vector2i) -> void: _effects.box_break(c))
 	world.bomb_placed.connect(func(b: SimBomb) -> void: _effects.bomb_placed(_world_pos(Vector2(b.pos))))
 	world.bomb_trapped.connect(func(b: SimBomb) -> void: _effects.trap_sprung(b.cell))
@@ -155,6 +161,23 @@ func _connect_effects() -> void:
 	world.player_died.connect(func(id: int, _k: int) -> void:
 		var player: SimPlayer = world.players[id]
 		_effects.death(_world_pos(Vector2(player.pos)), PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()]))
+
+
+func _nearest_player_cell(origin: Vector2i) -> Vector2i:
+	if world == null or world.players.is_empty():
+		return Vector2i(-1, -1)
+	var best_dist := 9999.0
+	var best_cell := Vector2i(-1, -1)
+	for id: int in world.players:
+		var player: SimPlayer = world.players[id]
+		if not player.alive:
+			continue
+		var cell: Vector2i = player.cell
+		var dist := origin.distance_to(cell)
+		if dist < best_dist:
+			best_dist = dist
+			best_cell = cell
+	return best_cell
 
 
 func _build_board() -> void:
@@ -373,8 +396,17 @@ func _sync_bombs() -> void:
 		if bomb.flying or bomb.trap_flight:
 			lift = 0.8
 		var pulse := 1.0 + 0.08 * sin(bomb.timer_ms * 0.02)
-		pulse *= 1.0 + 0.25 * maxf(1.0 - (SimConstants.BOMB_COUNTDOWN_MS - bomb.timer_ms) / 150.0, 0.0)
-		node.scale = Vector3.ONE * 1.5 * pulse
+		var age_ms: float = float(SimConstants.BOMB_COUNTDOWN_MS - bomb.timer_ms)
+		var scale_vec := Vector3.ONE * 1.5 * pulse
+		if age_ms >= 0.0 and age_ms < 180.0:
+			var t := age_ms / 180.0
+			var squash := exp(-4.0 * t) * cos(t * PI * 2.5)
+			var scale_xz := 1.0 + 0.35 * squash
+			var scale_y := 1.0 - 0.40 * squash
+			scale_vec.x *= scale_xz
+			scale_vec.z *= scale_xz
+			scale_vec.y *= scale_y
+		node.scale = scale_vec
 		node.position = _world_pos(Vector2(bomb.pos)) + Vector3(0, lift, 0)
 	for id: int in _bombs.keys():
 		if not live.has(id):

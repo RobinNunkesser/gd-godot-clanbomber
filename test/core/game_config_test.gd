@@ -273,3 +273,39 @@ func test_load_missing_file_keeps_defaults() -> void:
 	var known: Array[String] = []
 	loaded.load_from("user://does_not_exist.cfg", known)
 	assert_int(loaded.points_to_win).is_equal(SimConstants.POINTS_TO_WIN)
+
+
+func test_screen_shake_cycle_and_values() -> void:
+	var config := GameConfig.new()
+	assert_int(config.screen_shake).is_equal(2)
+	assert_str(config.shake_label()).is_equal("100 %")
+	assert_float(config.shake_multiplier()).is_equal(1.0)
+
+	config.cycle_shake(1)
+	assert_int(config.screen_shake).is_equal(2)
+
+	config.cycle_shake(-1)
+	assert_int(config.screen_shake).is_equal(1)
+	assert_str(config.shake_label()).is_equal("50 %")
+	assert_float(config.shake_multiplier()).is_equal(0.5)
+
+	config.cycle_shake(-1)
+	assert_int(config.screen_shake).is_equal(0)
+	assert_str(config.shake_label()).is_equal("0 %")
+	assert_float(config.shake_multiplier()).is_equal(0.0)
+
+	config.cycle_shake(-1)
+	assert_int(config.screen_shake).is_equal(0)
+
+
+func test_screen_shake_persistence() -> void:
+	var path := "user://test_settings_shake.cfg"
+	var config := GameConfig.new()
+	config.screen_shake = 1
+	config.save_to(path)
+
+	var loaded := GameConfig.new()
+	loaded.load_from(path, [] as Array[String])
+	assert_int(loaded.screen_shake).is_equal(1)
+	assert_float(loaded.shake_multiplier()).is_equal(0.5)
+	DirAccess.remove_absolute(path)

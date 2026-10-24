@@ -7,9 +7,12 @@ const MAX_SHAKE := 0.45
 
 var camera: Camera3D
 
+var shake_multiplier: float = 1.0
+
 var _shake := 0.0
 var _camera_base := Vector3.ZERO
 var _time := 0.0
+var _hitstop_token := 0
 
 
 func attach_camera(p_camera: Camera3D) -> void:
@@ -27,11 +30,34 @@ func _process(delta: float) -> void:
 
 
 func add_shake(amount: float) -> void:
-	_shake = minf(_shake + amount, MAX_SHAKE)
+	if shake_multiplier <= 0.0:
+		return
+	_shake = minf(_shake + amount * shake_multiplier, MAX_SHAKE)
 
 
-func explosion(cells: Array[Vector2i], origin: Vector2i) -> void:
-	add_shake(0.12 + 0.02 * cells.size())
+func hitstop(duration_s := 0.038, time_scale := 0.05) -> void:
+	if not is_inside_tree():
+		return
+	_hitstop_token += 1
+	var token := _hitstop_token
+	Engine.time_scale = time_scale
+	get_tree().create_timer(duration_s, true, false, true).timeout.connect(func() -> void:
+		if _hitstop_token == token:
+			Engine.time_scale = 1.0
+	)
+
+
+func cancel_hitstop() -> void:
+	_hitstop_token += 1
+	Engine.time_scale = 1.0
+
+
+func explosion(cells: Array[Vector2i], origin: Vector2i, listener_cell := Vector2i(-1, -1)) -> void:
+	var dist_factor := 1.0
+	if listener_cell.x >= 0:
+		var dist := origin.distance_to(listener_cell)
+		dist_factor = clampf(1.25 - (dist / 14.0) * 0.75, 0.4, 1.25)
+	add_shake((0.12 + 0.02 * cells.size()) * dist_factor)
 	_flash(_cell_pos(origin, 0.8), Color("ffb347"), 6.0, 0.25)
 	for cell in cells:
 		_burst(_cell_pos(cell, 0.3), Color("ffcc33"), Color("ff3c00"), 6, 2.2, 0.45, 0.1)

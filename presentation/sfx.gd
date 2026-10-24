@@ -20,7 +20,7 @@ func _ready() -> void:
 		_players.append(player)
 
 
-func play(sound: String, volume_db := 0.0, pitch_jitter := 0.06) -> void:
+func play(sound: String, volume_db := 0.0, pitch_jitter := -1.0) -> void:
 	var stream: AudioStream = _streams.get(sound)
 	if stream == null:
 		var path := DIR + sound + ".ogg"
@@ -29,9 +29,20 @@ func play(sound: String, volume_db := 0.0, pitch_jitter := 0.06) -> void:
 			return
 		stream = load(path)
 		_streams[sound] = stream
+	var jitter := pitch_jitter
+	if jitter < 0.0:
+		match sound:
+			"ui_select":
+				jitter = 0.025
+			"explosion":
+				jitter = 0.10
+			"box_break", "kick", "throw", "land":
+				jitter = 0.08
+			_:
+				jitter = 0.06
 	var player := _players[_next]
 	_next = (_next + 1) % POOL_SIZE
 	player.stream = stream
 	player.volume_db = volume_db
-	player.pitch_scale = 1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter)
+	player.pitch_scale = 1.0 + _rng.randf_range(-jitter, jitter)
 	player.play()
