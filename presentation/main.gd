@@ -287,6 +287,7 @@ func _physics_process(delta: float) -> void:
 		_intro = false
 		_showing_map_banner = false
 		sfx.play("land")
+		sfx.play("voice/go")
 	_apply_human_input()
 	_clock_ms += delta * 1000.0
 	var whole := int(_clock_ms)
@@ -517,7 +518,7 @@ func _connect_sounds() -> void:
 	_world.bomb_trapped.connect(func(_b: SimBomb) -> void: sfx.play("trap"))
 	_world.sudden_death_started.connect(func() -> void:
 		banner.text = I18n.text("SUDDEN_DEATH") + "!"
-		sfx.play("disease"))
+		sfx.play("voice/hurry_up"))
 	_world.tile_vanishing.connect(func(_c: Vector2i) -> void: sfx.play("box_break", -3.0))
 
 
@@ -644,7 +645,12 @@ func _check_round_end() -> void:
 	banner.offset_right = -8.0
 	banner.text = ""
 	_continue_unlock_at = Time.get_ticks_msec() + CONTINUE_LOCK_MS
-	sfx.play("round_end")
+	if _match.state == SimMatch.State.MATCH_OVER:
+		sfx.play("voice/you_win")
+	elif _match.last_winners.is_empty():
+		sfx.play("voice/its_a_tie")
+	else:
+		sfx.play("round_end")
 
 	if not _match.last_winners.is_empty() and view3d != null and view3d.effects != null:
 		for wid: int in _match.last_winners:

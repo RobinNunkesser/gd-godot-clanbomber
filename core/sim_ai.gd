@@ -43,6 +43,14 @@ func decide(world: SimWorld, player: SimPlayer) -> Vector2i:
 	if danger.has(here):
 		var flee := _search(world, player, here, func(c: Vector2i) -> bool: return not danger.has(c), false, danger)
 		return flee[0]
+	if player.can_glove and world.bomb_at(here) != null:
+		for step in range(2, SimConstants.THROW_FIELDS + 1):
+			var target := here + player.facing * step
+			if not world.board.in_bounds(target) or world.board.is_blocking(target):
+				break
+			if world.is_enemy_in(target, player_id):
+				world.action_bomb(player_id)
+				return Vector2i.ZERO
 	if _bomb_is_useful(world, player, here) and _has_escape(world, player, here, danger):
 		world.action_bomb(player_id)
 		return Vector2i.ZERO
@@ -50,12 +58,18 @@ func decide(world: SimWorld, player: SimPlayer) -> Vector2i:
 		true, danger, MAX_PICKUP_DISTANCE)
 	if pickup[0] != Vector2i.ZERO:
 		return pickup[0]
-	if not player.can_place_bomb():
-		return Vector2i.ZERO
-	var hunt := _search(world, player, here, func(c: Vector2i) -> bool:
-		return _bomb_is_useful(world, player, c) and _has_escape(world, player, c, danger),
-		true, danger)
-	return hunt[0]
+	if player.can_place_bomb():
+		var hunt := _search(world, player, here, func(c: Vector2i) -> bool:
+			return _bomb_is_useful(world, player, c) and _has_escape(world, player, c, danger),
+			true, danger)
+		if hunt[0] != Vector2i.ZERO:
+			return hunt[0]
+	var approach := _search(world, player, here, func(c: Vector2i) -> bool:
+		for dir in DIRECTIONS:
+			if world.is_enemy_in(c + dir, player_id):
+				return true
+		return false, true, danger)
+	return approach[0]
 
 
 # Zeit in ms bis zur Detonation je gefährdeter Zelle (kleinster Wert). Laufende Explosionen zählen als 0.
@@ -106,15 +120,37 @@ func _walkable(world: SimWorld, cell: Vector2i, own_cell: Vector2i) -> bool:
 	if not world.board.in_bounds(cell) or world.board.is_blocking(cell):
 		return false
 	var tile := world.board.get_tile(cell)
-	if SimTile.is_hole(tile):
-		return false
-	if tile == SimTile.Type.TRAP:
+	if SimTile.is_hole(tile) or tile == SimTile.Type.TRAP:
 		return false
 	if world.extras.has(cell) and not _is_good_extra(world, cell):
 		return false
-	if cell != own_cell and (world.bomb_at(cell) != null or world.is_other_player_in(cell, player_id)):
-		return false
+	if cell != own_cell:
+		if world.is_other_player_in(cell, player_id):
+			return false
+		var bomb := world.bomb_at(cell)
+		if bomb != null:
+			var player: SimPlayer = world.players.get(player_id)
+			if player != null and player.can_kick:
+				var kick_dir := cell - own_cell
+				if kick_dir.length_squared() == 1:
+					var behind := cell + kick_dir
+					if world.board.in_bounds(behind) and not world.board.is_blocking(behind) and world.bomb_at(behind) == null:
+						return true
+			return false
 	return true
+
+
+# Ermittelt das Ziel beim Schlittern über Eis in Richtung dir.
+static func slide_destination(world: SimWorld, start: Vector2i, dir: Vector2i) -> Vector2i:
+	var curr := start
+	while world.board.in_bounds(curr) and world.board.get_tile(curr) == SimTile.Type.ICE:
+		var next := curr + dir
+		if not world.board.in_bounds(next) or world.board.is_blocking(next) or world.bomb_at(next) != null:
+			break
+		curr = next
+		if world.board.get_tile(curr) != SimTile.Type.ICE:
+			break
+	return curr
 
 
 # Breitensuche vom Start zum nächsten Ziel. Rückgabe: [erste Richtung, Weglänge]; Weglänge -1, wenn nichts erreichbar ist.
@@ -135,14 +171,21 @@ func _search(world: SimWorld, player: SimPlayer, start: Vector2i, is_goal: Calla
 			continue
 		for dir in DIRECTIONS:
 			var next := cell + dir
-			if first.has(next) or not _walkable(world, next, player.cell):
+			if not _walkable(world, next, player.cell):
+				continue
+			var dest := next
+			if world.board.get_tile(next) == SimTile.Type.ICE:
+				dest = slide_destination(world, next, dir)
+				if not world.board.in_bounds(dest) or SimTile.is_hole(world.board.get_tile(dest)) or world.board.get_tile(dest) == SimTile.Type.TRAP:
+					continue
+			if first.has(dest):
 				continue
 			var steps: int = distance[cell] + 1
-			if danger.has(next) and (strict or (steps + 1) * cell_ms / 2 + SAFETY_MS >= danger[next]):
+			if danger.has(dest) and (strict or (steps + 1) * cell_ms / 2 + SAFETY_MS >= danger[dest]):
 				continue
-			first[next] = dir if cell == start else first[cell]
-			distance[next] = steps
-			queue.append(next)
+			first[dest] = dir if cell == start else first[cell]
+			distance[dest] = steps
+			queue.append(dest)
 	return [Vector2i.ZERO, -1]
 
 

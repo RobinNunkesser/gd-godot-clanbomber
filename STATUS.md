@@ -103,10 +103,10 @@ Präsentation:
 1. **Spielen und Feedback** zu Slice 4-11, Ton, 3D-Ansicht (Figurengröße, Kamera), Intro/Hurry-Up, Juice-Stärke.
 2. ~~Sudden Death~~ (erledigt, Slice 6; konfigurierbare Zeit in Slice 10).
 3. ~~Rundenverwaltung~~ (erledigt, Slice 7 & 10: Punkte, Teams, Sieger-Bildschirm).
-4. ~~AI~~ (einfache Heuristik erledigt, Slice 8; beachtet Teambildung). Grenzen: ignoriert Kick, Glove, Ice, Arrow, Trap; im Selbstspiel enden manche Runden passiv erst im Sudden Death.
+4. ~~AI~~ (erledigt, Slice 8 & Upgrade: beachtet Teambildung, Kick-Wegstoßen von Bomben, Handschuh-Wurf, Eisrutsch-Vermeidung von Löchern/Gefahr und proaktive Gegnerannäherung).
 5. ~~Karten-UI & Turnier~~ (erledigt, Slice 10: Filter nach Spielerzahl, Kartenauswahl-Pool mit Rotation).
 6. ~~Menü & Match-System~~ (erledigt, Slice 9 & 10: Spielerzahl, Spielernamen, Teams, Sudden Death Zeit, Beenden, Sieger-Screen).
-7. **Optik & Audio:** Juice-Stufe 1 erledigt (`effects_3d.gd`), CC0-BGM integriert, PBR-Boden/Eis/Pfeil/Fallen-Texturen aktiv.
+7. **Optik & Audio:** Juice-Stufe 1 erledigt (`effects_3d.gd`), CC0-BGM integriert, PBR-Boden/Eis/Pfeil/Fallen-Texturen aktiv, CC0-Voiceover-Announcer für Start ("Go!"), Sudden Death ("Hurry Up!") und Runden-/Match-Gewinn integriert.
 
 Vorgehen pro Schritt: erst Test schreiben, dann Kern ändern, danach Präsentation, dann README und diese Datei aktualisieren.
 

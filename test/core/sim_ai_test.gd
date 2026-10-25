@@ -147,3 +147,43 @@ func test_two_ais_play_a_whole_round_without_suicide() -> void:
 			ended = true
 			break
 	assert_bool(ended).is_true()
+
+
+func test_ai_avoids_ice_sliding_into_hole() -> void:
+	var board := _board()
+	board.set_tile(Vector2i(2, 1), SimTile.Type.ICE)
+	board.set_tile(Vector2i(3, 1), SimTile.Type.ICE)
+	board.set_tile(Vector2i(4, 1), SimTile.Type.HOLE)
+	board.set_tile(Vector2i(1, 2), SimTile.Type.GROUND)
+	var world := SimWorld.new(board)
+	var player := world.add_player(1, Vector2i(1, 1))
+	world.add_player(2, Vector2i(1, 5))
+	var ai := SimAI.new(1)
+	var dir := ai.decide(world, player)
+	# Rechts führt über Eis direkt ins Loch -> darf niemals gewählt werden
+	assert_bool(dir == Vector2i.RIGHT).is_false()
+
+
+func test_ai_recognizes_kickable_bomb() -> void:
+	var board := _board()
+	var world := SimWorld.new(board)
+	var player := world.add_player(1, Vector2i(1, 1))
+	player.can_kick = true
+	var bomb := SimBomb.new()
+	bomb.cell = Vector2i(2, 1)
+	bomb.power = 2
+	world.bombs.append(bomb)
+	var ai := SimAI.new(1)
+	# Mit Kick ist Zelle (2,1) begehbar, da die Bombe nach (3,1) rollen kann
+	assert_bool(ai._walkable(world, Vector2i(2, 1), Vector2i(1, 1))).is_true()
+
+
+func test_ai_approaches_distant_enemy_without_boxes() -> void:
+	var board := _board()
+	var world := SimWorld.new(board)
+	var p1 := world.add_player(1, Vector2i(1, 1))
+	world.add_player(2, Vector2i(9, 1))
+	var ai := SimAI.new(1)
+	var dir := ai.decide(world, p1)
+	# Keine Kisten auf dem Spielfeld: KI soll sich aktiv dem Gegner annähern (nach rechts)
+	assert_bool(dir == Vector2i.RIGHT).is_true()

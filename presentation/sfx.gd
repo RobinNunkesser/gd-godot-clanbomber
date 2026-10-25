@@ -31,15 +31,18 @@ func play(sound: String, volume_db := 0.0, pitch_jitter := -1.0) -> void:
 		_streams[sound] = stream
 	var jitter := pitch_jitter
 	if jitter < 0.0:
-		match sound:
-			"ui_select":
-				jitter = 0.025
-			"explosion":
-				jitter = 0.10
-			"box_break", "kick", "throw", "land":
-				jitter = 0.08
-			_:
-				jitter = 0.06
+		if sound.begins_with("voice/"):
+			jitter = 0.0
+		else:
+			match sound:
+				"ui_select":
+					jitter = 0.025
+				"explosion":
+					jitter = 0.10
+				"box_break", "kick", "throw", "land":
+					jitter = 0.08
+				_:
+					jitter = 0.06
 	var player := _players[_next]
 	_next = (_next + 1) % POOL_SIZE
 	player.stream = stream

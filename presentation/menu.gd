@@ -477,7 +477,7 @@ func _render_main() -> void:
 	var lines: Array[String] = [
 		"[center][img=68x68]res://assets/icon.png[/img][/center]",
 		"[center][font_size=32][b][color=#ffd54f]CLAN[/color][color=#ffffff]BOMBER[/color] [color=#ff5252]3D[/color][/b][/font_size][/center]",
-		"[center][color=#64b5f6]★ RETRO VOXEL BATTLE ROYALE ★[/color][/center]",
+		"[center][color=#64b5f6]★ 3D RETRO ARENA BOMBER ★[/color][/center]",
 		""
 	]
 	var rows := _main_rows()
