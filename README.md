@@ -42,6 +42,7 @@ Starten: Projekt in Godot 4.7 öffnen und F5, oder `godot --path .`. Die Szene `
 | Tastatur 1: WASD, Leertaste | bewegen, Bombe legen |
 | Tastatur 2: Pfeiltasten, Enter | bewegen, Bombe legen |
 | Gamepad: D-Pad oder linker Stick, A | bewegen, Bombe legen (Gerät 1-8 im Menü zuordnen) |
+| Touchscreen / Tablet | Virtuelles 4-Wege-D-Pad (links), `[💣 BOMB]` (rechts), `[⏸️]` (oben rechts) |
 | R | Runde neu starten |
 | M | Musik stummschalten / aktivieren (Mute) |
 | F4 | Ton-Effekte stummschalten / aktivieren (Mute) |

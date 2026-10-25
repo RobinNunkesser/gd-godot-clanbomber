@@ -13,11 +13,14 @@ const INTRO_DURATION_S := 0.9
 const HURRY_LIMIT_MS := 20000
 const HURRY_BEEP_INTERVAL_MS := 900
 
+const ClanBomberTouchOverlay = preload("res://presentation/clanbomber_touch_overlay.gd")
+
 @onready var view3d: ArenaView3D = $ArenaView3D
 @onready var sfx: Sfx = $Sfx
 @onready var hud: Label = get_node_or_null("UI/Hud")
 @onready var banner: Label = get_node_or_null("UI/Banner")
 
+var _touch_overlay: ClanBomberTouchOverlay
 var _catalog := MapCatalog.new()
 var _rotation := MapRotation.new()
 var _rng := RandomNumberGenerator.new()
@@ -53,6 +56,11 @@ func _ready() -> void:
 	_setup_vignette()
 	$UI.add_child(_scoreboard)
 	$UI.add_child(_menu)
+	_touch_overlay = ClanBomberTouchOverlay.new()
+	_touch_overlay.name = "ClanBomberTouchOverlay"
+	_touch_overlay.bomb_pressed.connect(func(): _bomb_for_controller(GameConfig.Controller.KEYBOARD_1))
+	_touch_overlay.pause_pressed.connect(_on_touch_pause)
+	$UI.add_child(_touch_overlay)
 	_menu.start_requested.connect(_start_match)
 	_menu.resume_requested.connect(_resume_game)
 	_menu.quit_requested.connect(_quit_game)
@@ -163,6 +171,8 @@ func _play_music(stream: AudioStream, volume_db := -8.0) -> void:
 
 
 func _open_menu() -> void:
+	if _touch_overlay:
+		_touch_overlay.set_gameplay_active(false)
 	Engine.time_scale = 1.0
 	if view3d != null and view3d.effects != null:
 		view3d.effects.cancel_hitstop()
@@ -175,11 +185,21 @@ func _open_menu() -> void:
 
 
 func _resume_game() -> void:
+	if _touch_overlay:
+		_touch_overlay.set_gameplay_active(true)
 	Engine.time_scale = 1.0
 	if view3d != null and view3d.effects != null:
 		view3d.effects.cancel_hitstop()
 	_menu.config.save_to(SETTINGS_PATH)
 	_play_music(_game_music, -10.0)
+
+
+func _on_touch_pause() -> void:
+	if _menu.visible:
+		_menu.close()
+		_resume_game()
+	elif _world != null and not _round_over and not _scoreboard.visible:
+		_open_menu()
 
 
 func _quit_game() -> void:
@@ -432,6 +452,8 @@ func _continue_after_scoreboard() -> void:
 # Neues Match mit den Menüeinstellungen; die Karten laufen nach der Kartenauswahl (zufällig oder der Reihe nach),
 # nach jeder Runde folgt die nächste.
 func _start_match() -> void:
+	if _touch_overlay:
+		_touch_overlay.set_gameplay_active(true)
 	Engine.time_scale = 1.0
 	if view3d != null and view3d.effects != null:
 		view3d.effects.cancel_hitstop()
@@ -460,6 +482,8 @@ func _apply_human_input() -> void:
 		match config.slots[slot]:
 			GameConfig.Controller.KEYBOARD_1:
 				direction = _axis(KEY_A, KEY_D, KEY_W, KEY_S)
+				if _touch_overlay and _touch_overlay.current_direction != Vector2i.ZERO:
+					direction = _touch_overlay.current_direction
 			GameConfig.Controller.KEYBOARD_2:
 				direction = _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN)
 			GameConfig.Controller.PAD_1, GameConfig.Controller.PAD_2, GameConfig.Controller.PAD_3, GameConfig.Controller.PAD_4, GameConfig.Controller.PAD_5, GameConfig.Controller.PAD_6, GameConfig.Controller.PAD_7, GameConfig.Controller.PAD_8:
@@ -631,6 +655,8 @@ func _check_round_end() -> void:
 		return
 	_round_over = true
 	_hurry_started = false
+	if _touch_overlay:
+		_touch_overlay.set_gameplay_active(false)
 	if _vignette != null:
 		_vignette.modulate.a = 0.0
 	Engine.time_scale = 1.0
