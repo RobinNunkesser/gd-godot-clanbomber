@@ -40,11 +40,34 @@ func _detect_touch_device() -> void:
 	if force_visible:
 		is_touch_active = true
 		return
-	is_touch_active = DisplayServer.is_touchscreen_available() \
-		or OS.has_feature("web_android") \
-		or OS.has_feature("web_ios") \
-		or OS.has_feature("mobile") \
-		or OS.has_feature("touchscreen")
+	
+	# 1. Native Mobile (Android / iOS)
+	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios"):
+		is_touch_active = true
+		return
+	
+	# 2. Web Export (WASM im Browser)
+	if OS.has_feature("web"):
+		if OS.has_feature("web_android") or OS.has_feature("web_ios"):
+			is_touch_active = true
+			return
+		# In Browsern prüfen, ob ein echter Touchscreen vorhanden ist (z. B. iPadOS)
+		if Engine.has_singleton("JavaScriptBridge"):
+			var js = Engine.get_singleton("JavaScriptBridge")
+			var touch_points = js.eval("('maxTouchPoints' in navigator) ? navigator.maxTouchPoints : 0")
+			if touch_points != null and int(touch_points) > 0:
+				is_touch_active = true
+				return
+		is_touch_active = false
+		return
+
+	# 3. Desktop Native -> standardmäßig aus
+	is_touch_active = false
+
+func toggle_touch_overlay() -> bool:
+	is_touch_active = !is_touch_active
+	_update_visibility()
+	return is_touch_active
 
 func _get_viewport_size() -> Vector2:
 	var vp = get_viewport()
@@ -185,7 +208,15 @@ func _on_pause_pressed() -> void:
 	pause_pressed.emit()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_touch_active or not is_gameplay_active:
+	# Falls auf Desktop mit Touchscreen getoucht wird: Touch-Overlay dynamisch aktivieren
+	if not is_touch_active:
+		if event is InputEventScreenTouch and event.pressed:
+			is_touch_active = true
+			_update_visibility()
+		else:
+			return
+
+	if not is_gameplay_active:
 		return
 
 	if event is InputEventScreenTouch:

@@ -369,6 +369,10 @@ func _input(event: InputEvent) -> void:
 				_bomb_for_controller(GameConfig.Controller.KEYBOARD_1)
 			KEY_ENTER, KEY_KP_ENTER:
 				_bomb_for_controller(GameConfig.Controller.KEYBOARD_2)
+			KEY_O:
+				if _touch_overlay:
+					var active = _touch_overlay.toggle_touch_overlay()
+					banner.text = "Touch-Steuerung: %s" % ("AN" if active else "AUS")
 			KEY_M:
 				_menu.config.toggle_music_mute()
 				_apply_audio_config()
