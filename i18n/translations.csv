@@ -99,7 +99,7 @@ SCOREBOARD_NEW_MATCH,Neues Match,New Match
 SCOREBOARD_BACK_TO_MENU,Zurück zum Menü,Back to Menu
 MENU_PLACE,Platz,Slot
 CTRL_OFF,Aus,Off
-CTRL_KEYBOARD_1,"Tastatur 1 (WASD, Leertaste)","Keyboard 1 (WASD, Space)"
+CTRL_KEYBOARD_1,"Tastatur 1 / Touch (WASD, Leertaste)","Keyboard 1 / Touch (WASD, Space)"
 CTRL_KEYBOARD_2,"Tastatur 2 (Pfeile, Enter)","Keyboard 2 (Arrows, Enter)"
 CTRL_PAD,Gamepad %d,Gamepad %d
 CTRL_NOT_CONNECTED,(nicht verbunden),(not connected)

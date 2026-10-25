@@ -105,12 +105,14 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", style)
 	
 	_text.focus_mode = Control.FOCUS_NONE
+	_text.mouse_filter = Control.MOUSE_FILTER_STOP
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.scroll_active = false
 	_text.add_theme_font_size_override("normal_font_size", 20)
 	_text.add_theme_font_size_override("bold_font_size", 28)
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_text.meta_clicked.connect(_on_meta_clicked)
 	var box := HBoxContainer.new()
 	box.focus_mode = Control.FOCUS_NONE
 	box.add_child(_text)
@@ -121,6 +123,30 @@ func _ready() -> void:
 	visible = false
 	I18n.init()
 	_lang_index = I18n.lang_index()
+
+
+func _on_meta_clicked(meta: Variant) -> void:
+	var m := str(meta)
+	if m.begins_with("row:"):
+		var r := int(m.trim_prefix("row:"))
+		_row = r
+		_accept()
+		_render()
+	elif m.begins_with("prev:"):
+		var r := int(m.trim_prefix("prev:"))
+		_row = r
+		_change(-1)
+		_render()
+	elif m.begins_with("next:"):
+		var r := int(m.trim_prefix("next:"))
+		_row = r
+		_change(1)
+		_render()
+	elif m == "back":
+		back()
+	elif m == "next_help":
+		_help_page = 1 if _help_page == 0 else 0
+		_render()
 
 
 func open() -> void:
@@ -156,22 +182,22 @@ func back() -> bool:
 func _main_rows() -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	if is_game_active:
-		rows.append({"id": "resume", "label": "▶  [b]%s[/b]" % I18n.text("MENU_RESUME"), "value": "", "adjustable": false, "gap": true})
-		rows.append({"id": "start", "label": "💣  [b]%s[/b]" % I18n.text("MENU_NEW_MATCH"), "value": "", "adjustable": false})
+		rows.append({"id": "resume", "label": "►  [b]%s[/b]" % I18n.text("MENU_RESUME"), "value": "", "adjustable": false, "gap": true})
+		rows.append({"id": "start", "label": "★  [b]%s[/b]" % I18n.text("MENU_NEW_MATCH"), "value": "", "adjustable": false})
 	else:
-		var label := "💣  [b]%s[/b]" % I18n.text("MENU_START")
+		var label := "★  [b]%s[/b]" % I18n.text("MENU_START")
 		var blocker := _start_blocker()
 		if not blocker.is_empty():
 			label += " [color=#ff8a80](%s)[/color]" % blocker
 		rows.append({"id": "start", "label": label, "value": "", "adjustable": false, "gap": true})
-	rows.append({"id": "players", "label": "👥  %s" % I18n.text("MENU_PLAYERS_TEAMS"), "value": _players_summary(), "adjustable": false})
+	rows.append({"id": "players", "label": "●  %s" % I18n.text("MENU_PLAYERS_TEAMS"), "value": _players_summary(), "adjustable": false})
 	var playable := catalog.playable(config.active_slots())
 	var order := I18n.text("MENU_RANDOM") if config.random_order else I18n.text("MENU_SEQUENTIAL")
-	rows.append({"id": "pool", "label": "🗺️  %s" % I18n.text("MENU_CARDS"), "value": "%d / %d • %s" % [config.effective_pool(playable).size(), playable.size(), order.to_lower()], "adjustable": false})
-	rows.append({"id": "match", "label": "⚙️  %s" % I18n.text("MENU_MATCH"), "value": _match_summary(), "adjustable": false})
-	rows.append({"id": "settings", "label": "🔧  %s" % I18n.text("MENU_SETTINGS"), "value": _settings_summary(), "adjustable": false})
-	rows.append({"id": "help", "label": "📖  %s" % I18n.text("MENU_HELP"), "value": "", "adjustable": false})
-	rows.append({"id": "quit", "label": "🚪  %s" % I18n.text("MENU_QUIT"), "value": "", "adjustable": false})
+	rows.append({"id": "pool", "label": "■  %s" % I18n.text("MENU_CARDS"), "value": "%d / %d • %s" % [config.effective_pool(playable).size(), playable.size(), order.to_lower()], "adjustable": false})
+	rows.append({"id": "match", "label": "◆  %s" % I18n.text("MENU_MATCH"), "value": _match_summary(), "adjustable": false})
+	rows.append({"id": "settings", "label": "≡  %s" % I18n.text("MENU_SETTINGS"), "value": _settings_summary(), "adjustable": false})
+	rows.append({"id": "help", "label": "?  %s" % I18n.text("MENU_HELP"), "value": "", "adjustable": false})
+	rows.append({"id": "quit", "label": "✕  %s" % I18n.text("MENU_QUIT"), "value": "", "adjustable": false})
 	return rows
 
 
@@ -644,11 +670,15 @@ func _render_help() -> void:
 
 
 func _row_line(row: int, label: String, value: String, adjustable: bool) -> String:
-	var marker := "▶ " if row == _row else "   "
-	var shown := value
-	if adjustable and value != "" and row == _row:
-		shown = "◀ %s ▶" % value
-	return "%s%s    %s" % [marker, label, shown]
+	var marker := "> " if row == _row else "  "
+	var label_part := "[url=row:%d]%s%s[/url]" % [row, marker, label]
+	if not adjustable:
+		var val_part := ("   " + value) if value != "" else ""
+		return "%s%s" % [label_part, val_part]
+	var prev_link := "[url=prev:%d]<[/url]" % row
+	var next_link := "[url=next:%d]>[/url]" % row
+	var shown := "%s %s %s" % [prev_link, value, next_link] if value != "" else ""
+	return "%s    %s" % [label_part, shown]
 
 
 func _value_text(controller: int, pads: Array[int]) -> String:
@@ -662,26 +692,26 @@ func _value_text(controller: int, pads: Array[int]) -> String:
 func _controller_label(controller: int) -> String:
 	match controller:
 		GameConfig.Controller.OFF:
-			return "⚪ " + I18n.text("CTRL_OFF")
+			return "[-] " + I18n.text("CTRL_OFF")
 		GameConfig.Controller.KEYBOARD_1:
-			return "⌨ " + I18n.text("CTRL_KEYBOARD_1")
+			return "[KB1/Touch] " + I18n.text("CTRL_KEYBOARD_1")
 		GameConfig.Controller.KEYBOARD_2:
-			return "⌨ " + I18n.text("CTRL_KEYBOARD_2")
+			return "[KB2] " + I18n.text("CTRL_KEYBOARD_2")
 		GameConfig.Controller.AI:
-			return "🤖 AI"
+			return "[AI] Bot"
 		_:
 			if controller >= GameConfig.Controller.PAD_1 and controller <= GameConfig.Controller.PAD_8:
-				return "🎮 " + (I18n.text("CTRL_PAD") % (controller - GameConfig.Controller.PAD_1 + 1))
+				return "[PAD %d] " % (controller - GameConfig.Controller.PAD_1 + 1) + (I18n.text("CTRL_PAD") % (controller - GameConfig.Controller.PAD_1 + 1))
 			return GameConfig.NAMES[controller]
 
 
 func _team_text(team: int) -> String:
 	if team <= 0:
 		return I18n.text("TEAM_NO_TEAM")
-	var icon := "🩸 "
+	var icon := "[TEAM] "
 	match team:
-		1: icon = "🩸 "
-		2: icon = "👑 "
-		3: icon = "🌊 "
-		4: icon = "🍃 "
+		1: icon = "[ROT] "
+		2: icon = "[BLAU] "
+		3: icon = "[GRUEN] "
+		4: icon = "[GELB] "
 	return icon + I18n.text("TEAM_LABEL") + GameConfig.TEAM_NAMES[team - 1]

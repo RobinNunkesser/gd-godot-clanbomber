@@ -58,7 +58,7 @@ func _ready() -> void:
 	$UI.add_child(_menu)
 	_touch_overlay = ClanBomberTouchOverlay.new()
 	_touch_overlay.name = "ClanBomberTouchOverlay"
-	_touch_overlay.bomb_pressed.connect(func(): _bomb_for_controller(GameConfig.Controller.KEYBOARD_1))
+	_touch_overlay.bomb_pressed.connect(_on_touch_bomb)
 	_touch_overlay.pause_pressed.connect(_on_touch_pause)
 	$UI.add_child(_touch_overlay)
 	_menu.start_requested.connect(_start_match)
@@ -473,6 +473,23 @@ func _start_match() -> void:
 	sfx.play("ui_select")
 
 
+func _get_touch_player_slot() -> int:
+	var config := _menu.config
+	var kb1_slot := config.slots.find(GameConfig.Controller.KEYBOARD_1)
+	if kb1_slot >= 0:
+		return kb1_slot
+	for slot in GameConfig.SLOT_COUNT:
+		if config.slots[slot] != GameConfig.Controller.AI and config.slots[slot] != GameConfig.Controller.OFF:
+			return slot
+	return 0
+
+
+func _on_touch_bomb() -> void:
+	var slot := _get_touch_player_slot()
+	if slot >= 0 and slot < GameConfig.SLOT_COUNT:
+		_world.action_bomb(slot + 1)
+
+
 func _bomb_for_controller(controller: int) -> void:
 	var slot := _menu.config.slots.find(controller)
 	if slot >= 0:
@@ -481,19 +498,20 @@ func _bomb_for_controller(controller: int) -> void:
 
 func _apply_human_input() -> void:
 	var config := _menu.config
+	var touch_slot := _get_touch_player_slot()
 	for slot in GameConfig.SLOT_COUNT:
 		var direction := Vector2i.ZERO
 		match config.slots[slot]:
 			GameConfig.Controller.KEYBOARD_1:
 				direction = _axis(KEY_A, KEY_D, KEY_W, KEY_S)
-				if _touch_overlay and _touch_overlay.current_direction != Vector2i.ZERO:
-					direction = _touch_overlay.current_direction
 			GameConfig.Controller.KEYBOARD_2:
 				direction = _axis(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN)
 			GameConfig.Controller.PAD_1, GameConfig.Controller.PAD_2, GameConfig.Controller.PAD_3, GameConfig.Controller.PAD_4, GameConfig.Controller.PAD_5, GameConfig.Controller.PAD_6, GameConfig.Controller.PAD_7, GameConfig.Controller.PAD_8:
 				direction = _pad_axis(config.pad_device(slot))
 			_:
 				continue
+		if slot == touch_slot and _touch_overlay and _touch_overlay.current_direction != Vector2i.ZERO:
+			direction = _touch_overlay.current_direction
 		_world.set_move_dir(slot + 1, direction)
 
 

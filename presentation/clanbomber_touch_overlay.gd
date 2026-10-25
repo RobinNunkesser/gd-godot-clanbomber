@@ -144,7 +144,7 @@ func _build_ui() -> void:
 	# --- 2. Bomben-Button (Rechts) ---
 	bomb_btn = Button.new()
 	bomb_btn.name = "TouchBombBtn"
-	bomb_btn.text = "💣\nBOMB"
+	bomb_btn.text = "BOMB"
 	bomb_btn.focus_mode = Control.FOCUS_NONE
 	bomb_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE # Über Multi-Touch abgefragt
 	var b_radius = 48.0
@@ -168,7 +168,7 @@ func _build_ui() -> void:
 	# --- 3. Pause Button (Oben Rechts) ---
 	pause_btn = Button.new()
 	pause_btn.name = "TouchPauseBtn"
-	pause_btn.text = "⏸️"
+	pause_btn.text = "||"
 	pause_btn.focus_mode = Control.FOCUS_NONE
 	pause_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	var p_style = StyleBoxFlat.new()
@@ -228,6 +228,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
 		_handle_touch_drag(drag.index, drag.position)
+	elif event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_handle_touch_down(999, mb.position)
+			else:
+				_handle_touch_up(999)
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if (mm.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			_handle_touch_drag(999, mm.position)
 
 func _handle_touch_down(index: int, pos: Vector2) -> void:
 	var vp_size = _get_viewport_size()
