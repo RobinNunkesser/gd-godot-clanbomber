@@ -109,7 +109,8 @@ func _build_ui() -> void:
 	dpad_base.custom_minimum_size = Vector2(dpad_radius * 2.0, dpad_radius * 2.0)
 	dpad_base.size = dpad_base.custom_minimum_size
 	dpad_base.position = _dpad_center - Vector2(dpad_radius, dpad_radius)
-	dpad_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dpad_base.mouse_filter = Control.MOUSE_FILTER_STOP
+	dpad_base.gui_input.connect(_on_dpad_gui_input)
 	
 	var base_style = StyleBoxFlat.new()
 	base_style.set_corner_radius_all(int(dpad_radius))
@@ -146,7 +147,7 @@ func _build_ui() -> void:
 	bomb_btn.name = "TouchBombBtn"
 	bomb_btn.text = "BOMB"
 	bomb_btn.focus_mode = Control.FOCUS_NONE
-	bomb_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE # Über Multi-Touch abgefragt
+	bomb_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	var b_radius = 48.0
 	bomb_btn.custom_minimum_size = Vector2(b_radius * 2.0, b_radius * 2.0)
 	bomb_btn.size = bomb_btn.custom_minimum_size
@@ -163,6 +164,8 @@ func _build_ui() -> void:
 	bomb_btn.add_theme_stylebox_override("pressed", b_style)
 	bomb_btn.add_theme_color_override("font_color", Color.WHITE)
 	bomb_btn.add_theme_font_size_override("font_size", 16)
+	bomb_btn.button_down.connect(_on_bomb_button_down)
+	bomb_btn.button_up.connect(_on_bomb_button_up)
 	root_control.add_child(bomb_btn)
 
 	# --- 3. Pause Button (Oben Rechts) ---
@@ -189,10 +192,9 @@ func _build_ui() -> void:
 
 func _layout_buttons(vp_size: Vector2) -> void:
 	_dpad_default_pos = Vector2(130.0, maxf(vp_size.y - 130.0, 200.0))
-	if _dpad_touch_id == -1:
-		_dpad_center = _dpad_default_pos
-		if is_instance_valid(dpad_base):
-			dpad_base.position = _dpad_center - Vector2(dpad_radius, dpad_radius)
+	_dpad_center = _dpad_default_pos
+	if is_instance_valid(dpad_base):
+		dpad_base.position = _dpad_center - Vector2(dpad_radius, dpad_radius)
 
 	if is_instance_valid(bomb_btn):
 		bomb_btn.position = Vector2(vp_size.x - 135.0, vp_size.y - 135.0)
@@ -207,7 +209,62 @@ func _on_viewport_resized() -> void:
 func _on_pause_pressed() -> void:
 	pause_pressed.emit()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _on_bomb_button_down() -> void:
+	bomb_pressed.emit()
+	_pulse_button(bomb_btn, true)
+
+func _on_bomb_button_up() -> void:
+	_pulse_button(bomb_btn, false)
+
+func _on_dpad_gui_input(event: InputEvent) -> void:
+	if not is_gameplay_active:
+		return
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			_dpad_touch_id = st.index
+			_update_dpad_from_local(st.position)
+		elif st.index == _dpad_touch_id:
+			_dpad_touch_id = -1
+			_reset_dpad()
+	elif event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		if sd.index == _dpad_touch_id:
+			_update_dpad_from_local(sd.position)
+	elif event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_dpad_touch_id = 999
+				_update_dpad_from_local(mb.position)
+			else:
+				_dpad_touch_id = -1
+				_reset_dpad()
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if (mm.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 and _dpad_touch_id == 999:
+			_update_dpad_from_local(mm.position)
+
+func _update_dpad_from_local(local_pos: Vector2) -> void:
+	var center := Vector2(dpad_radius, dpad_radius)
+	var diff := local_pos - center
+	var dist := diff.length()
+	if dist > dpad_radius:
+		diff = diff.normalized() * dpad_radius
+
+	var knob_rad = 30.0
+	if is_instance_valid(dpad_knob):
+		dpad_knob.position = (diff + center) - Vector2(knob_rad, knob_rad)
+
+	if dist < 12.0:
+		current_direction = Vector2i.ZERO
+	else:
+		if absf(diff.x) > absf(diff.y):
+			current_direction = Vector2i(int(signf(diff.x)), 0)
+		else:
+			current_direction = Vector2i(0, int(signf(diff.y)))
+
+func _input(event: InputEvent) -> void:
 	# Falls auf Desktop mit Touchscreen getoucht wird: Touch-Overlay dynamisch aktivieren
 	if not is_touch_active:
 		if event is InputEventScreenTouch and event.pressed:
@@ -219,6 +276,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not is_gameplay_active:
 		return
 
+	# D-Pad Drag-Verfolgung auch wenn der Finger außerhalb der D-Pad-Basis rutscht
+	if _dpad_touch_id != -1:
+		if event is InputEventScreenDrag and event.index == _dpad_touch_id:
+			if is_instance_valid(dpad_base):
+				var local_pos = dpad_base.get_global_transform().affine_inverse() * event.position
+				_update_dpad_from_local(local_pos)
+		elif event is InputEventScreenTouch and event.index == _dpad_touch_id and not event.pressed:
+			_dpad_touch_id = -1
+			_reset_dpad()
+		elif event is InputEventMouseMotion and _dpad_touch_id == 999:
+			if (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+				if is_instance_valid(dpad_base):
+					var local_pos = dpad_base.get_global_transform().affine_inverse() * event.position
+					_update_dpad_from_local(local_pos)
+			else:
+				_dpad_touch_id = -1
+				_reset_dpad()
+		elif event is InputEventMouseButton and _dpad_touch_id == 999 and not event.pressed:
+			_dpad_touch_id = -1
+			_reset_dpad()
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Fallback für programmatische Events
+	if not is_touch_active or not is_gameplay_active:
+		return
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
@@ -228,34 +310,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
 		_handle_touch_drag(drag.index, drag.position)
-	elif event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
-			if mb.pressed:
-				_handle_touch_down(999, mb.position)
-			else:
-				_handle_touch_up(999)
-	elif event is InputEventMouseMotion:
-		var mm := event as InputEventMouseMotion
-		if (mm.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-			_handle_touch_drag(999, mm.position)
 
 func _handle_touch_down(index: int, pos: Vector2) -> void:
-	var vp_size = _get_viewport_size()
-
 	# 1. Bomben-Button Hit-Test
 	if is_instance_valid(bomb_btn) and bomb_btn.get_global_rect().has_point(pos):
 		_bomb_touch_id = index
-		bomb_pressed.emit()
-		_pulse_button(bomb_btn, true)
+		_on_bomb_button_down()
 		return
 
-	# 2. D-Pad: Beliebiger Touch auf linker Bildschirmhälfte
-	if pos.x < vp_size.x * 0.5 and _dpad_touch_id == -1:
-		_dpad_touch_id = index
-		_dpad_center = pos
+	# 2. D-Pad
+	_dpad_touch_id = index
+	_dpad_center = pos
+	if is_instance_valid(dpad_base):
 		dpad_base.position = _dpad_center - Vector2(dpad_radius, dpad_radius)
-		_update_dpad(pos)
+	_update_dpad(pos)
 
 func _handle_touch_drag(index: int, pos: Vector2) -> void:
 	if index == _dpad_touch_id:
@@ -267,7 +335,7 @@ func _handle_touch_up(index: int) -> void:
 		_reset_dpad()
 	elif index == _bomb_touch_id:
 		_bomb_touch_id = -1
-		_pulse_button(bomb_btn, false)
+		_on_bomb_button_up()
 
 func _update_dpad(pos: Vector2) -> void:
 	var diff = pos - _dpad_center
@@ -276,10 +344,11 @@ func _update_dpad(pos: Vector2) -> void:
 		diff = diff.normalized() * dpad_radius
 
 	var knob_rad = 30.0
-	dpad_knob.position = (diff + Vector2(dpad_radius, dpad_radius)) - Vector2(knob_rad, knob_rad)
+	if is_instance_valid(dpad_knob):
+		dpad_knob.position = (diff + Vector2(dpad_radius, dpad_radius)) - Vector2(knob_rad, knob_rad)
 
-	# 4-Wege-Richtung bestimmen (wie ClanBomber-Simulation)
-	if dist < 18.0:
+	# 4-Wege-Richtung bestimmen
+	if dist < 12.0:
 		current_direction = Vector2i.ZERO
 	else:
 		if absf(diff.x) > absf(diff.y):
