@@ -100,6 +100,16 @@ Das Projekt ist mit Export-Presets (`export_presets.cfg`) für **Windows Desktop
   - **Automatisch bei Release:** Wird ein Git-Tag (z. B. `v0.1.0`) gepusht, erzeugt die Action automatisch ein GitHub Release mit allen Plattform-ZIPs als Download-Anhänge.
 - **Tests:** `.github/workflows/test.yml` installiert Godot 4.7.2 und führt bei jedem Push und Pull Request `addons/gdUnit4/runtest.sh -a test` aus.
 
+### Geplante Weiterentwicklungen & CI/CD Roadmap
+
+- **macOS Code Signing & Notarisierung in CI/CD:**
+  - Automatisches Signieren mit Apple Developer ID (`codesign` mit Hardened Runtime) und Notarisierung via `notarytool` im GitHub-Actions-Workflow (`.github/workflows/export.yml`), um macOS-Builds Gatekeeper-konform ohne Warnhinweise bereitzustellen.
+  - Erforderliche GitHub Actions Secrets: `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`, `APPLE_TEAM_ID`.
+- **itch.io Deployment via Butler:**
+  - Automatischer Upload der Web- und Desktop-Builds per Butler CLI in entsprechende Release-Kanäle (`html5`, `windows`, `osx`, `linux`).
+- **Mac App Store Distribution:**
+  - Sandbox-Konfiguration, App-Store-Zertifikate und Paketierung als signiertes `.pkg` via Transporter.
+
 ## Credits & Third-Party Assets
 
 Ein großes Dankeschön an die Open-Gaming- und Open-Source-Community:
