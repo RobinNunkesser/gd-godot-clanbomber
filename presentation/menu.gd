@@ -80,10 +80,30 @@ var _help_page := 0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	custom_minimum_size = Vector2(700, 0)
+	custom_minimum_size = Vector2(720, 0)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
 	focus_mode = Control.FOCUS_NONE
+	
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.08, 0.14, 0.94)
+	style.border_width_left = 3
+	style.border_width_top = 3
+	style.border_width_right = 3
+	style.border_width_bottom = 3
+	style.border_color = Color(0.25, 0.65, 0.95, 0.85)
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.shadow_size = 20
+	style.shadow_color = Color(0, 0, 0, 0.7)
+	style.content_margin_left = 30
+	style.content_margin_right = 30
+	style.content_margin_top = 24
+	style.content_margin_bottom = 24
+	add_theme_stylebox_override("panel", style)
+	
 	_text.focus_mode = Control.FOCUS_NONE
 	_text.bbcode_enabled = true
 	_text.fit_content = true
@@ -136,22 +156,22 @@ func back() -> bool:
 func _main_rows() -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	if is_game_active:
-		rows.append({"id": "resume", "label": "[b]%s[/b]" % I18n.text("MENU_RESUME"), "value": "", "adjustable": false, "gap": true})
-		rows.append({"id": "start", "label": "[b]%s[/b]" % I18n.text("MENU_NEW_MATCH"), "value": "", "adjustable": false})
+		rows.append({"id": "resume", "label": "▶  [b]%s[/b]" % I18n.text("MENU_RESUME"), "value": "", "adjustable": false, "gap": true})
+		rows.append({"id": "start", "label": "💣  [b]%s[/b]" % I18n.text("MENU_NEW_MATCH"), "value": "", "adjustable": false})
 	else:
-		var label := "[b]%s[/b]" % I18n.text("MENU_START")
+		var label := "💣  [b]%s[/b]" % I18n.text("MENU_START")
 		var blocker := _start_blocker()
 		if not blocker.is_empty():
 			label += " [color=#ff8a80](%s)[/color]" % blocker
 		rows.append({"id": "start", "label": label, "value": "", "adjustable": false, "gap": true})
-	rows.append({"id": "players", "label": I18n.text("MENU_PLAYERS_TEAMS"), "value": _players_summary(), "adjustable": false})
+	rows.append({"id": "players", "label": "👥  %s" % I18n.text("MENU_PLAYERS_TEAMS"), "value": _players_summary(), "adjustable": false})
 	var playable := catalog.playable(config.active_slots())
 	var order := I18n.text("MENU_RANDOM") if config.random_order else I18n.text("MENU_SEQUENTIAL")
-	rows.append({"id": "pool", "label": I18n.text("MENU_CARDS"), "value": "%d / %d • %s" % [config.effective_pool(playable).size(), playable.size(), order.to_lower()], "adjustable": false})
-	rows.append({"id": "match", "label": I18n.text("MENU_MATCH"), "value": _match_summary(), "adjustable": false})
-	rows.append({"id": "settings", "label": I18n.text("MENU_SETTINGS"), "value": _settings_summary(), "adjustable": false})
-	rows.append({"id": "help", "label": I18n.text("MENU_HELP"), "value": "", "adjustable": false})
-	rows.append({"id": "quit", "label": I18n.text("MENU_QUIT"), "value": "", "adjustable": false})
+	rows.append({"id": "pool", "label": "🗺️  %s" % I18n.text("MENU_CARDS"), "value": "%d / %d • %s" % [config.effective_pool(playable).size(), playable.size(), order.to_lower()], "adjustable": false})
+	rows.append({"id": "match", "label": "⚙️  %s" % I18n.text("MENU_MATCH"), "value": _match_summary(), "adjustable": false})
+	rows.append({"id": "settings", "label": "🔧  %s" % I18n.text("MENU_SETTINGS"), "value": _settings_summary(), "adjustable": false})
+	rows.append({"id": "help", "label": "📖  %s" % I18n.text("MENU_HELP"), "value": "", "adjustable": false})
+	rows.append({"id": "quit", "label": "🚪  %s" % I18n.text("MENU_QUIT"), "value": "", "adjustable": false})
 	return rows
 
 
@@ -454,7 +474,12 @@ func _render() -> void:
 
 
 func _render_main() -> void:
-	var lines: Array[String] = ["[center][b]ClanBomber[/b][/center]", ""]
+	var lines: Array[String] = [
+		"[center][img=68x68]res://assets/icon.png[/img][/center]",
+		"[center][font_size=32][b][color=#ffd54f]CLAN[/color][color=#ffffff]BOMBER[/color] [color=#ff5252]3D[/color][/b][/font_size][/center]",
+		"[center][color=#64b5f6]★ RETRO VOXEL BATTLE ROYALE ★[/color][/center]",
+		""
+	]
 	var rows := _main_rows()
 	for i in rows.size():
 		var row: Dictionary = rows[i]
@@ -481,8 +506,9 @@ func _render_players() -> void:
 	var pads := Input.get_connected_joypads()
 	for slot in range(first_slot, last_slot):
 		var color: Color = ArenaView3D.PLAYER_COLORS[slot % ArenaView3D.PLAYER_COLORS.size()]
-		lines.append("[color=#%s][b]%s %d[/b][/color]" % [
-			color.to_html(false), I18n.text("MENU_PLACE"), slot + 1])
+		var model_name: String = ArenaView3D.CHARACTER_MODELS[slot % ArenaView3D.CHARACTER_MODELS.size()].capitalize()
+		lines.append("[color=#%s]■ [b]%s %d[/b] [color=#aaaaaa](%s)[/color][/color]" % [
+			color.to_html(false), I18n.text("MENU_PLACE"), slot + 1, model_name])
 		var ctrl_text := _value_text(config.slots[slot], pads)
 		lines.append(_row_line(slot * 3, I18n.text("MENU_CONTROLLER"), ctrl_text, true))
 		var name_text := config.name_of(slot)
@@ -636,20 +662,26 @@ func _value_text(controller: int, pads: Array[int]) -> String:
 func _controller_label(controller: int) -> String:
 	match controller:
 		GameConfig.Controller.OFF:
-			return I18n.text("CTRL_OFF")
+			return "⚪ " + I18n.text("CTRL_OFF")
 		GameConfig.Controller.KEYBOARD_1:
-			return I18n.text("CTRL_KEYBOARD_1")
+			return "⌨ " + I18n.text("CTRL_KEYBOARD_1")
 		GameConfig.Controller.KEYBOARD_2:
-			return I18n.text("CTRL_KEYBOARD_2")
+			return "⌨ " + I18n.text("CTRL_KEYBOARD_2")
 		GameConfig.Controller.AI:
-			return "AI"
+			return "🤖 AI"
 		_:
 			if controller >= GameConfig.Controller.PAD_1 and controller <= GameConfig.Controller.PAD_8:
-				return I18n.text("CTRL_PAD") % (controller - GameConfig.Controller.PAD_1 + 1)
+				return "🎮 " + (I18n.text("CTRL_PAD") % (controller - GameConfig.Controller.PAD_1 + 1))
 			return GameConfig.NAMES[controller]
 
 
 func _team_text(team: int) -> String:
 	if team <= 0:
 		return I18n.text("TEAM_NO_TEAM")
-	return I18n.text("TEAM_LABEL") + GameConfig.TEAM_NAMES[team - 1]
+	var icon := "🩸 "
+	match team:
+		1: icon = "🩸 "
+		2: icon = "👑 "
+		3: icon = "🌊 "
+		4: icon = "🍃 "
+	return icon + I18n.text("TEAM_LABEL") + GameConfig.TEAM_NAMES[team - 1]

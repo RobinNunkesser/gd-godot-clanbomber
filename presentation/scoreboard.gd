@@ -19,10 +19,30 @@ var _last_names: Dictionary = {}
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	custom_minimum_size = Vector2(620, 0)
+	custom_minimum_size = Vector2(660, 0)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
 	focus_mode = Control.FOCUS_NONE
+	
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.08, 0.14, 0.95)
+	style.border_width_left = 3
+	style.border_width_top = 3
+	style.border_width_right = 3
+	style.border_width_bottom = 3
+	style.border_color = Color(1.0, 0.84, 0.15, 0.85)
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.shadow_size = 22
+	style.shadow_color = Color(0, 0, 0, 0.75)
+	style.content_margin_left = 32
+	style.content_margin_right = 32
+	style.content_margin_top = 26
+	style.content_margin_bottom = 26
+	add_theme_stylebox_override("panel", style)
+	
 	_text.focus_mode = Control.FOCUS_NONE
 	_text.bbcode_enabled = true
 	_text.fit_content = true
@@ -89,7 +109,7 @@ func _render(match_state: SimMatch, names: Dictionary) -> void:
 func _headline(match_state: SimMatch, names: Dictionary) -> String:
 	if _match_over:
 		var who := _winner_name(match_state, names)
-		return "[font_size=36][color=#%s][b]%s[/b][/color][/font_size]" % [GOLD.to_html(false), I18n.text("SCOREBOARD_WINS_MATCH") % who]
+		return "[font_size=36][color=#%s][b]🏆 %s 🏆[/b][/color][/font_size]" % [GOLD.to_html(false), I18n.text("SCOREBOARD_WINS_MATCH") % who]
 	var winners := match_state.last_winners
 	if winners.is_empty():
 		return "[b]%s[/b]" % I18n.text("SCOREBOARD_DRAW")
@@ -118,7 +138,7 @@ func _team_text(team: int) -> String:
 func _player_line(id: int, match_state: SimMatch, names: Dictionary) -> String:
 	var color: Color = ArenaView3D.PLAYER_COLORS[(id - 1) % ArenaView3D.PLAYER_COLORS.size()]
 	var won := match_state.last_winners.has(id)
-	return "[color=#%s]%s[/color]   %s   Kills %d%s" % [
+	return "[color=#%s]■ %s[/color]   %s   Kills %d%s" % [
 		color.to_html(false), _name(id, names), _pips(match_state.points_of(id), match_state.points_to_win),
 		match_state.kills_of(id), "   ◀ " + I18n.text("SCOREBOARD_ROUND_WIN") if won else ""]
 
